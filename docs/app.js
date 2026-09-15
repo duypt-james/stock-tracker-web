@@ -37,12 +37,14 @@ const chartLabelsPlugin = {
     id: 'chartLabels',
     afterDatasetsDraw(chart) {
         const ctx = chart.ctx;
+        const yScale = chart.scales.y;
         chart.data.datasets.forEach((dataset, i) => {
             const meta = chart.getDatasetMeta(i);
             meta.data.forEach((bar, index) => {
                 const value = dataset.data[index];
                 if (value === null || value === undefined) return;
                 const text = fmtVND(value, true);
+                const yPos = yScale.getPixelForValue(value);
                 ctx.save();
                 ctx.font = 'bold 9px -apple-system, sans-serif';
                 ctx.fillStyle = dataset.borderColor;
@@ -50,10 +52,10 @@ const chartLabelsPlugin = {
                 const x = bar.x;
                 if (value >= 0) {
                     ctx.textBaseline = 'bottom';
-                    ctx.fillText(text, x, bar.y - 6);
+                    ctx.fillText(text, x, yPos - 6);
                 } else {
                     ctx.textBaseline = 'top';
-                    ctx.fillText(text, x, bar.base + 6);
+                    ctx.fillText(text, x, yPos + 6);
                 }
                 ctx.restore();
             });
