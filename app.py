@@ -9,6 +9,19 @@ matplotlib.use("Agg")
 
 st.set_page_config(page_title="Stock Tracker", page_icon="📈", layout="wide")
 
+st.markdown("""
+<style>
+    @media (max-width: 768px) {
+        .stMetric { padding: 8px 4px !important; }
+        .stMetric label { font-size: 12px !important; }
+        .stMetric [data-testid="stMetricValue"] { font-size: 16px !important; }
+        .stSelectbox, .stNumberInput, .stTextInput { font-size: 14px !important; }
+    }
+    .stPlot { width: 100% !important; }
+    div[data-testid="stDataFrame"] { overflow-x: auto; }
+</style>
+""", unsafe_allow_html=True)
+
 # ============================================================
 #  DATA
 # ============================================================
@@ -119,9 +132,10 @@ with tab1:
         profit = total_value - total_invest
         pct = (profit / total_invest * 100) if total_invest else 0
 
-        c1, c2, c3, c4 = st.columns(4)
+        c1, c2 = st.columns(2)
         c1.metric("Tổng đầu tư", fmt_vnd(total_invest * 1000))
         c2.metric("Giá trị hiện tại", fmt_vnd(total_value * 1000))
+        c3, c4 = st.columns(2)
         c3.metric("Lợi nhuận", fmt_vnd(profit * 1000, sign=True))
         c4.metric("Tỷ lệ", f"{pct:+.2f}%",
                   delta="Lãi" if profit >= 0 else "Lỗ",
@@ -168,7 +182,7 @@ with tab1:
             all_dates = sorted(all_dates, key=lambda x: datetime.strptime(x, "%d/%m/%Y"))
 
             if all_dates and show_stocks:
-                fig, ax = plt.subplots(figsize=(12, 5), dpi=200)
+                fig, ax = plt.subplots(figsize=(10, 4.5), dpi=200)
                 colors = ["#1a73e8", "#34a853", "#fbbc04", "#9334e6", "#ff6d01"]
                 n_dates = len(all_dates)
                 n_stocks = len(show_stocks)
