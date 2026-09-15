@@ -35,6 +35,8 @@ function getLatestPrice(data, code) {
 
 let chart = null;
 
+Chart.register(ChartDataLabels);
+
 function renderAll() {
     const data = loadData();
     renderSummary(data);
@@ -173,6 +175,14 @@ function renderChart(data) {
                     callbacks: {
                         label: ctx => ctx.dataset.label + ': ' + fmtVND(ctx.raw, true) + ' VND'
                     }
+                },
+                datalabels: {
+                    color: ctx => ctx.dataset.borderColor,
+                    anchor: ctx => ctx.raw >= 0 ? 'end' : 'start',
+                    align: ctx => ctx.raw >= 0 ? 'top' : 'bottom',
+                    offset: 2,
+                    font: { size: 8, weight: 'bold' },
+                    formatter: v => v !== null ? fmtVND(v, true) : ''
                 }
             },
             scales: {
