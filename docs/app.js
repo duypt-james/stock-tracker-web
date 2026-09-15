@@ -64,6 +64,7 @@ const chartLabelsPlugin = {
 };
 
 let chart = null;
+let pieChart = null;
 
 function renderAll() {
     const data = loadData();
@@ -71,6 +72,7 @@ function renderAll() {
     renderStockList(data);
     renderHistory(data);
     renderChart(data);
+    renderPieChart(data);
 }
 
 function renderSummary(data) {
@@ -147,6 +149,59 @@ function renderHistory(data) {
         </div>`;
     });
     table.innerHTML = rows.join('');
+}
+
+function renderPieChart(data) {
+    const canvas = document.getElementById('pie-chart');
+    if (!canvas) return;
+    if (!data.stocks.length) { if (pieChart) { pieChart.destroy(); pieChart = null; } return; }
+
+    const colors = ['#1a73e8', '#34a853', '#fbbc04', '#9334e6', '#ff6d01'];
+    const labels = data.stocks.map(s => s.code);
+    const values = data.stocks.map(s => s.buy_price * s.qty);
+    const total = values.reduce((a, b) => a + b, 0);
+    const bgColors = data.stocks.map((_, i) => colors[i % colors.length]);
+
+    const ctx = canvas.getContext('2d');
+    if (pieChart) pieChart.destroy();
+    pieChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: bgColors,
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '55%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const pct = ((ctx.raw / total) * 100).toFixed(1);
+                            return ctx.label + ': ' + fmtVND(ctx.raw * 1000) + ' (' + pct + '%)';
+                        }
+                    }
+                },
+                datalabels: { display: false }
+            }
+        },
+        plugins: [chartLabelsPlugin]
+    });
+
+    const legendEl = document.getElementById('pie-legend');
+    if (legendEl) {
+        legendEl.innerHTML = data.stocks.map((s, i) => {
+            const pct = ((values[i] / total) * 100).toFixed(1);
+            return `<span style="margin-right:10px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${bgColors[i]};margin-right:3px"></span>${s.code} ${pct}%</span>`;
+        }).join('');
+    }
 }
 
 function renderChart(data) {
