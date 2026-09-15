@@ -180,8 +180,8 @@ function renderChart(data) {
                 datalabels: {
                     clip: false,
                     color: ctx => ctx.dataset.borderColor,
-                    anchor: ctx => ctx.raw >= 0 ? 'end' : 'start',
-                    align: ctx => ctx.raw >= 0 ? 'top' : 'bottom',
+                    anchor: 'end',
+                    align: 'end',
                     offset: 4,
                     font: { size: 9, weight: 'bold' },
                     formatter: v => v !== null ? fmtVND(v, true) : ''
