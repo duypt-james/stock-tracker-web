@@ -65,6 +65,7 @@ const chartLabelsPlugin = {
 
 let chart = null;
 let pieChart = null;
+let capitalChart = null;
 
 function renderAll() {
     const data = loadData();
@@ -73,6 +74,7 @@ function renderAll() {
     renderHistory(data);
     renderChart(data);
     renderPieChart(data);
+    renderCapitalChart(data);
 }
 
 function renderSummary(data) {
@@ -149,6 +151,98 @@ function renderHistory(data) {
         </div>`;
     });
     table.innerHTML = rows.join('');
+}
+
+const capitalLabelsPlugin = {
+    id: 'capitalLabels',
+    afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        const yScale = chart.scales.y;
+        chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            meta.data.forEach((bar, index) => {
+                const value = dataset.data[index];
+                if (value === null || value === undefined) return;
+                const text = fmtVND(value * 1000, true);
+                const yPos = yScale.getPixelForValue(value);
+                ctx.save();
+                ctx.font = 'bold 9px -apple-system, sans-serif';
+                ctx.fillStyle = dataset.borderColor;
+                ctx.textAlign = 'center';
+                if (value >= 0) {
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(text, bar.x, yPos - 4);
+                } else {
+                    ctx.textBaseline = 'top';
+                    ctx.fillText(text, bar.x, yPos + 4);
+                }
+                ctx.restore();
+            });
+        });
+    }
+};
+
+function renderCapitalChart(data) {
+    const canvas = document.getElementById('capital-chart');
+    if (!canvas) return;
+    if (!data.stocks.length) { if (capitalChart) { capitalChart.destroy(); capitalChart = null; } return; }
+
+    const colors = ['#1a73e8', '#34a853', '#fbbc04', '#9334e6', '#ff6d01'];
+    const labels = data.stocks.map(s => s.code);
+    const capitalData = data.stocks.map(s => s.buy_price * s.qty);
+    const profitData = data.stocks.map(s => {
+        const latest = getLatestPrice(data, s.code);
+        return latest ? (latest - s.buy_price) * s.qty : 0;
+    });
+
+    const ctx = canvas.getContext('2d');
+    if (capitalChart) capitalChart.destroy();
+    capitalChart = new Chart(ctx, {
+        type: 'bar',
+        plugins: [capitalLabelsPlugin],
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Vốn',
+                    data: capitalData,
+                    backgroundColor: colors.map(c => c + 'cc'),
+                    borderColor: colors,
+                    borderWidth: 1,
+                    borderRadius: 3
+                },
+                {
+                    label: 'Lãi/Lỗ',
+                    data: profitData,
+                    backgroundColor: profitData.map(v => v >= 0 ? '#34a853cc' : '#ea4335cc'),
+                    borderColor: profitData.map(v => v >= 0 ? '#34a853' : '#ea4335'),
+                    borderWidth: 1,
+                    borderRadius: 3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 24, bottom: 4 } },
+            plugins: {
+                legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 10 } } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ctx.dataset.label + ': ' + fmtVND(ctx.raw * 1000, true) + ' VND'
+                    }
+                },
+                datalabels: { display: false }
+            },
+            scales: {
+                y: {
+                    ticks: { callback: v => fmtVND(v * 1000, true), font: { size: 9 } },
+                    grid: { color: '#e0e0e0' }
+                },
+                x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } }
+            }
+        }
+    });
 }
 
 function renderPieChart(data) {
