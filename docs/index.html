@@ -183,9 +183,15 @@
             <div class="card">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                     <div class="card-title" style="margin:0">Biểu đồ lãi/lỗ</div>
-                    <select id="chart-filter" onchange="renderChart(loadData())" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-                        <option value="all">Tất cả</option>
-                    </select>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <select id="chart-unit" onchange="renderChart(loadData())" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+                            <option value="vnd">VNĐ</option>
+                            <option value="pct">%</option>
+                        </select>
+                        <select id="chart-filter" onchange="renderChart(loadData())" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+                            <option value="all">Tất cả</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="chart-wrap">
                     <canvas id="chart"></canvas>

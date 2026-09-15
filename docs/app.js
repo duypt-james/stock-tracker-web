@@ -38,12 +38,13 @@ const chartLabelsPlugin = {
     afterDatasetsDraw(chart) {
         const ctx = chart.ctx;
         const yScale = chart.scales.y;
+        const isPct = document.getElementById('chart-unit') && document.getElementById('chart-unit').value === 'pct';
         chart.data.datasets.forEach((dataset, i) => {
             const meta = chart.getDatasetMeta(i);
             meta.data.forEach((bar, index) => {
                 const value = dataset.data[index];
                 if (value === null || value === undefined) return;
-                const text = fmtVND(value, true);
+                const text = isPct ? value.toFixed(1) + '%' : fmtVND(value, true);
                 const yPos = yScale.getPixelForValue(value);
                 ctx.save();
                 ctx.font = 'bold 9px -apple-system, sans-serif';
@@ -300,6 +301,7 @@ function renderPieChart(data) {
 
 function renderChart(data) {
     const filter = document.getElementById('chart-filter').value;
+    const unit = document.getElementById('chart-unit') ? document.getElementById('chart-unit').value : 'vnd';
     const showStocks = filter === 'all' ? data.stocks : data.stocks.filter(s => s.code === filter);
 
     const allDates = new Set();
@@ -317,13 +319,16 @@ function renderChart(data) {
         return;
     }
 
+    const isPct = unit === 'pct';
     const colors = ['#1a73e8', '#34a853', '#fbbc04', '#9334e6', '#ff6d01'];
     const datasets = showStocks.map((stk, i) => {
         const priceMap = {};
         (data.history[stk.code] || []).forEach(h => priceMap[h.date] = h.price);
         const profits = dates.map(d => {
             const p = priceMap[d];
-            return p ? (p - stk.buy_price) * stk.qty * 1000 : null;
+            if (!p) return null;
+            if (isPct) return ((p - stk.buy_price) / stk.buy_price * 100);
+            return (p - stk.buy_price) * stk.qty * 1000;
         });
         return {
             label: stk.code,
@@ -352,7 +357,10 @@ function renderChart(data) {
                 legend: { display: showStocks.length > 1, position: 'top', align: 'end' },
                 tooltip: {
                     callbacks: {
-                        label: ctx => ctx.dataset.label + ': ' + fmtVND(ctx.raw, true) + ' VND'
+                        label: ctx => {
+                            if (isPct) return ctx.dataset.label + ': ' + ctx.raw.toFixed(2) + '%';
+                            return ctx.dataset.label + ': ' + fmtVND(ctx.raw, true) + ' VND';
+                        }
                     }
                 },
                 datalabels: {
@@ -362,7 +370,7 @@ function renderChart(data) {
             scales: {
                 y: {
                     ticks: {
-                        callback: v => fmtVND(v, true)
+                        callback: v => isPct ? v.toFixed(0) + '%' : fmtVND(v, true)
                     },
                     grid: { color: '#e0e0e0' }
                 },
