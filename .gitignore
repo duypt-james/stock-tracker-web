@@ -1,0 +1,7 @@
+StockTracker/
+stock_settings.json
+stock_icon.ico
+__pycache__/
+*.pyc
+build/
+*.spec
