@@ -105,8 +105,8 @@ function renderStockList(data) {
         const cls = latest ? (pnl >= 0 ? 'profit' : 'loss') : '';
         return `<div class="stock-row">
             <div class="stock-code">${stk.code}</div>
-            <div class="stock-qty">${stk.qty.toLocaleString('vi-VN')}</div>
-            <div class="stock-buy">${fmt(stk.buy_price)}</div>
+            <div class="stock-qty" onclick="editStockField('${stk.code}','qty',this)" style="cursor:pointer" title="Click để sửa">${stk.qty.toLocaleString('vi-VN')}</div>
+            <div class="stock-buy" onclick="editStockField('${stk.code}','buy_price',this)" style="cursor:pointer" title="Click để sửa">${fmt(stk.buy_price)}</div>
             <div class="stock-price">${latest ? fmt(latest) : '--'}</div>
             <div class="stock-pnl ${cls}">${latest ? fmtVND(pnl * 1000, true) : '--'}</div>
             <div class="stock-pct ${cls}">${latest ? (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%' : '--'}</div>
@@ -253,6 +253,33 @@ function deleteStock(code) {
     delete data.history[code];
     saveData(data);
     renderAll();
+}
+
+function editStockField(code, field, el) {
+    const data = loadData();
+    const stk = data.stocks.find(s => s.code === code);
+    if (!stk) return;
+    const oldVal = stk[field];
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.step = field === 'qty' ? '1' : '0.001';
+    input.value = oldVal;
+    input.style.cssText = 'width:80px;padding:2px 4px;border:2px solid var(--primary);border-radius:4px;font-size:13px;text-align:center;';
+    el.textContent = '';
+    el.appendChild(input);
+    input.focus();
+    input.select();
+    const confirm = () => {
+        let newVal = parseFloat(input.value);
+        if (isNaN(newVal) || newVal <= 0) { newVal = oldVal; }
+        if (field === 'qty') newVal = Math.round(newVal);
+        else newVal = normalizeNghin(newVal);
+        stk[field] = newVal;
+        saveData(data);
+        renderAll();
+    };
+    input.addEventListener('blur', confirm);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') confirm(); if (e.key === 'Escape') renderAll(); });
 }
 
 function addPrice() {
