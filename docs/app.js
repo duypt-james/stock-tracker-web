@@ -44,7 +44,7 @@ const chartLabelsPlugin = {
             meta.data.forEach((bar, index) => {
                 const value = dataset.data[index];
                 if (value === null || value === undefined) return;
-                const text = isPct ? value.toFixed(1) + '%' : fmtVND(value, true);
+                const text = isPct ? value.toFixed(2) + '%' : fmtVND(value, true);
                 const yPos = yScale.getPixelForValue(value);
                 ctx.save();
                 ctx.font = 'bold 9px -apple-system, sans-serif';
