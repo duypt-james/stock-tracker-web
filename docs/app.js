@@ -33,9 +33,35 @@ function getLatestPrice(data, code) {
     return hist.length ? hist[hist.length - 1].price : null;
 }
 
-let chart = null;
+const chartLabelsPlugin = {
+    id: 'chartLabels',
+    afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            meta.data.forEach((bar, index) => {
+                const value = dataset.data[index];
+                if (value === null || value === undefined) return;
+                const text = fmtVND(value, true);
+                ctx.save();
+                ctx.font = 'bold 9px -apple-system, sans-serif';
+                ctx.fillStyle = dataset.borderColor;
+                ctx.textAlign = 'center';
+                const x = bar.x;
+                if (value >= 0) {
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(text, x, bar.y - 6);
+                } else {
+                    ctx.textBaseline = 'top';
+                    ctx.fillText(text, x, bar.y + 6);
+                }
+                ctx.restore();
+            });
+        });
+    }
+};
 
-Chart.register(ChartDataLabels);
+let chart = null;
 
 function renderAll() {
     const data = loadData();
@@ -162,6 +188,7 @@ function renderChart(data) {
     if (chart) chart.destroy();
     chart = new Chart(ctx, {
         type: 'bar',
+        plugins: [chartLabelsPlugin],
         data: {
             labels: dates.map(d => d.substring(0, 5)),
             datasets
@@ -178,13 +205,7 @@ function renderChart(data) {
                     }
                 },
                 datalabels: {
-                    clip: false,
-                    color: ctx => ctx.dataset.borderColor,
-                    anchor: 'end',
-                    align: 'end',
-                    offset: 4,
-                    font: { size: 9, weight: 'bold' },
-                    formatter: v => v !== null ? fmtVND(v, true) : ''
+                    display: false
                 }
             },
             scales: {
