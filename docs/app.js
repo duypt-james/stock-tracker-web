@@ -192,7 +192,7 @@ function renderPieChart(data) {
                 datalabels: { display: false }
             }
         },
-        plugins: [chartLabelsPlugin]
+        plugins: []
     });
 
     const legendEl = document.getElementById('pie-legend');
