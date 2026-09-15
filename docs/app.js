@@ -180,7 +180,7 @@ function renderChart(data) {
                 datalabels: {
                     clip: false,
                     color: ctx => ctx.dataset.borderColor,
-                    anchor: 'end',
+                    anchor: ctx => ctx.raw >= 0 ? 'end' : 'start',
                     align: ctx => ctx.raw >= 0 ? 'top' : 'bottom',
                     offset: 4,
                     font: { size: 9, weight: 'bold' },
