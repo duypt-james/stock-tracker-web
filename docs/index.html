@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a73e8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <title>Stock Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --profit: #34a853;
+            --loss: #ea4335;
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --text: #333;
+            --text2: #5f6368;
+            --border: #e0e0e0;
+            --radius: 10px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+        .header { background: linear-gradient(135deg, #1a73e8, #4285f4); color: #fff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .header h1 { font-size: 20px; font-weight: 700; }
+        .header-actions { display: flex; gap: 8px; }
+        .header-actions button { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+        .header-actions button:hover { background: rgba(255,255,255,0.3); }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 12px; }
+
+        .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+        .metric { background: var(--card); border-radius: var(--radius); padding: 14px 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .metric-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+        .metric-value { font-size: 16px; font-weight: 700; }
+
+        .card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .card-title { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 12px; }
+
+        .stock-header, .hist-header { display: grid; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text2); padding: 6px 8px; background: #f5f5f5; border-radius: 6px; margin-bottom: 6px; }
+        .stock-header { grid-template-columns: 50px 40px 60px 60px 70px 50px 25px; }
+        .hist-header { grid-template-columns: 80px 70px 70px 80px 60px; }
+
+        .stock-row, .hist-row { display: grid; gap: 4px; padding: 8px; border-bottom: 1px solid #f0f0f0; font-size: 13px; align-items: center; }
+        .stock-row { grid-template-columns: 50px 40px 60px 60px 70px 50px 25px; }
+        .hist-row { grid-template-columns: 80px 70px 70px 80px 60px; cursor: pointer; }
+        .hist-row:hover { background: #f8f9fa; }
+        .stock-row:last-child, .hist-row:last-child { border-bottom: none; }
+
+        .stock-code { font-weight: 700; color: var(--primary); }
+        .profit { color: var(--profit); }
+        .loss { color: var(--loss); }
+        .btn-icon { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 50%; }
+        .btn-del { color: var(--loss); }
+        .btn-del:hover { background: #fce8e6; }
+
+        .chart-wrap { position: relative; height: 280px; }
+        #chart { width: 100% !important; height: 100% !important; }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; margin-top: 10px; align-items: end; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 11px; color: var(--text2); font-weight: 600; }
+        .form-group input, .form-group select { padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: #1557b0; }
+        .btn-green { background: var(--profit); color: #fff; }
+        .btn-green:hover { background: #2d9148; }
+        .btn-red { background: var(--loss); color: #fff; }
+        .btn-red:hover { background: #c5221f; }
+        .btn-orange { background: #f57c00; color: #fff; }
+        .btn-orange:hover { background: #e65100; }
+
+        .actions-bar { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+        .empty { text-align: center; padding: 30px; color: var(--text2); font-size: 13px; }
+
+        .tabs { display: flex; gap: 0; margin-bottom: 12px; }
+        .tab { flex: 1; padding: 10px; text-align: center; background: var(--card); border: 1px solid var(--border); cursor: pointer; font-size: 14px; font-weight: 600; }
+        .tab:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+        .tab:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+        .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .import-export { display: flex; gap: 8px; margin-top: 8px; }
+
+        @media (min-width: 768px) {
+            .metrics { grid-template-columns: repeat(4, 1fr); }
+            .metric-value { font-size: 20px; }
+            .chart-wrap { height: 350px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📈 STOCK TRACKER</h1>
+        <div class="header-actions">
+            <button onclick="exportData()">📥 Export</button>
+            <label style="cursor:pointer">
+                📤 Import
+                <input type="file" accept=".json" onchange="importData(this)" style="display:none">
+            </label>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('overview')">📊 Tổng quan</div>
+            <div class="tab" onclick="switchTab('manage')">⚙️ Quản lý</div>
+        </div>
+
+        <!-- TAB: TỔNG QUAN -->
+        <div id="tab-overview" class="tab-content active">
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">Tổng đầu tư</div>
+                    <div class="metric-value" id="sum-invest">0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Giá trị hiện tại</div>
+                    <div class="metric-value" id="sum-value">0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Lợi nhuận</div>
+                    <div class="metric-value" id="sum-profit">0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Tỷ lệ</div>
+                    <div class="metric-value" id="sum-pct">0%</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Danh mục cổ phiếu</div>
+                <div class="stock-header">
+                    <span>Mã</span><span>SL</span><span>Mua</span><span>HT</span><span>Lãi/Lỗ</span><span>%</span><span></span>
+                </div>
+                <div id="stock-list"></div>
+            </div>
+
+            <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                    <div class="card-title" style="margin:0">Biểu đồ lãi/lỗ</div>
+                    <select id="chart-filter" onchange="renderChart(loadData())" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px"></select>
+                </div>
+                <div class="chart-wrap">
+                    <canvas id="chart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                    <div class="card-title" style="margin:0">Lịch sử giá theo phiên</div>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <select id="hist-code" onchange="renderHistory(loadData())" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px"></select>
+                        <button class="btn btn-orange" onclick="editPriceFromSelect()" style="font-size:12px;padding:6px 10px">✏️ Sửa</button>
+                        <button class="btn btn-red" onclick="deleteLastPrice()" style="font-size:12px;padding:6px 10px">🗑️ Xóa</button>
+                    </div>
+                </div>
+                <div class="hist-header">
+                    <span>Ngày</span><span>Giá đóng cửa</span><span>Thay đổi</span><span>Lãi/Lỗ</span><span>%</span>
+                </div>
+                <div id="hist-table"></div>
+                <div class="form-row" style="margin-top:12px">
+                    <div class="form-group">
+                        <label>Ngày</label>
+                        <input type="date" id="add-date">
+                    </div>
+                    <div class="form-group">
+                        <label>Giá (nghìn VND)</label>
+                        <input type="number" step="0.001" id="add-price" placeholder="VD: 12.500">
+                    </div>
+                    <div class="form-group" style="justify-content:end">
+                        <button class="btn btn-green" onclick="addPrice()">➕ Thêm</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: QUẢN LÝ -->
+        <div id="tab-manage" class="tab-content">
+            <div class="card">
+                <div class="card-title">Thêm mã CP mới</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Mã CP</label>
+                        <input type="text" id="new-code" placeholder="VD: CEO" style="text-transform:uppercase">
+                    </div>
+                    <div class="form-group">
+                        <label>Số lượng</label>
+                        <input type="number" id="new-qty" value="100" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Giá mua (nghìn VND)</label>
+                        <input type="number" step="0.001" id="new-price" placeholder="VD: 13.92">
+                    </div>
+                    <div class="form-group" style="justify-content:end">
+                        <button class="btn btn-primary" onclick="addStock()">➕ Thêm</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Dữ liệu</div>
+                <div class="import-export">
+                    <button class="btn btn-primary" onclick="exportData()">📥 Export JSON</button>
+                    <label class="btn btn-green" style="cursor:pointer">
+                        📤 Import JSON
+                        <input type="file" accept=".json" onchange="importData(this)" style="display:none">
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        function switchTab(name) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('tab-' + name).classList.add('active');
+            if (name === 'overview') {
+                renderAll();
+                updateChartFilter();
+            }
+        }
+
+        function editPriceFromSelect() {
+            const code = document.getElementById('hist-code').value;
+            if (!code) return;
+            const data = loadData();
+            const hist = data.history[code];
+            if (!hist || !hist.length) { alert('Không có dữ liệu!'); return; }
+            const last = hist[hist.length - 1];
+            editPrice(code, last.date, last.price);
+        }
+
+        // Set default date
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            const dd = String(today.getDate()).padStart(2, '0');
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const yyyy = today.getFullYear();
+            document.getElementById('add-date').value = `${yyyy}-${mm}-${dd}`;
+        });
+    </script>
+</body>
+</html>
