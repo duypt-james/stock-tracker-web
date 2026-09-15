@@ -369,12 +369,15 @@ function importData(input) {
 function updateChartFilter() {
     const data = loadData();
     const sel = document.getElementById('chart-filter');
+    const current = sel.value;
     sel.innerHTML = '<option value="all">Tất cả</option>' +
         data.stocks.map(s => `<option value="${s.code}">${s.code}</option>`).join('');
-    sel.onchange = () => renderChart(data);
+    if (data.stocks.find(s => s.code === current)) {
+        sel.value = current;
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    renderAll();
     updateChartFilter();
+    renderAll();
 });

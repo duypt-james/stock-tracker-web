@@ -167,7 +167,9 @@
             <div class="card">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                     <div class="card-title" style="margin:0">Biểu đồ lãi/lỗ</div>
-                    <select id="chart-filter" onchange="renderChart(loadData())" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px"></select>
+                    <select id="chart-filter" onchange="renderChart(loadData())" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+                        <option value="all">Tất cả</option>
+                    </select>
                 </div>
                 <div class="chart-wrap">
                     <canvas id="chart"></canvas>
