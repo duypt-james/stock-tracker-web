@@ -200,7 +200,7 @@ function renderChart(data) {
             maintainAspectRatio: false,
             layout: { padding: { top: 20 } },
             plugins: {
-                legend: { display: showStocks.length > 1, position: 'top' },
+                legend: { display: showStocks.length > 1, position: 'top', align: 'end' },
                 tooltip: {
                     callbacks: {
                         label: ctx => ctx.dataset.label + ': ' + fmtVND(ctx.raw, true) + ' VND'
