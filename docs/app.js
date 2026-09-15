@@ -169,6 +169,7 @@ function renderChart(data) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: { padding: { top: 20 } },
             plugins: {
                 legend: { display: showStocks.length > 1, position: 'top' },
                 tooltip: {
@@ -177,10 +178,11 @@ function renderChart(data) {
                     }
                 },
                 datalabels: {
+                    clip: false,
                     color: ctx => ctx.dataset.borderColor,
-                    anchor: ctx => ctx.raw >= 0 ? 'end' : 'start',
-                    align: 'top',
-                    offset: 2,
+                    anchor: 'end',
+                    align: ctx => ctx.raw >= 0 ? 'top' : 'bottom',
+                    offset: 4,
                     font: { size: 8, weight: 'bold' },
                     formatter: v => v !== null ? fmtVND(v, true) : ''
                 }
