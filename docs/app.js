@@ -53,7 +53,7 @@ const chartLabelsPlugin = {
                     ctx.fillText(text, x, bar.y - 6);
                 } else {
                     ctx.textBaseline = 'top';
-                    ctx.fillText(text, x, bar.y + 6);
+                    ctx.fillText(text, x, bar.base + 6);
                 }
                 ctx.restore();
             });
