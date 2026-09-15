@@ -1,6 +1,95 @@
 const DB_KEY = 'stock_tracker_data';
 const DEFAULT_DATA = { stocks: [], history: {} };
 
+const GH_TOKEN_KEY = 'stock_tracker_gh_token';
+const GH_REPO_KEY = 'stock_tracker_gh_repo';
+const GH_FILE_KEY = 'stock_tracker_gh_file';
+const GH_SHA_KEY = 'stock_tracker_gh_sha';
+
+function getGitHubConfig() {
+    return {
+        token: localStorage.getItem(GH_TOKEN_KEY) || '',
+        repo: localStorage.getItem(GH_REPO_KEY) || 'duypt-james/stock-tracker-web',
+        file: localStorage.getItem(GH_FILE_KEY) || 'stock_data.json',
+        sha: localStorage.getItem(GH_SHA_KEY) || ''
+    };
+}
+
+function saveGitHubConfig(cfg) {
+    if (cfg.token !== undefined) localStorage.setItem(GH_TOKEN_KEY, cfg.token);
+    if (cfg.repo !== undefined) localStorage.setItem(GH_REPO_KEY, cfg.repo);
+    if (cfg.file !== undefined) localStorage.setItem(GH_FILE_KEY, cfg.file);
+    if (cfg.sha !== undefined) localStorage.setItem(GH_SHA_KEY, cfg.sha);
+}
+
+function setSyncStatus(text, color) {
+    const el = document.getElementById('sync-status');
+    if (el) {
+        el.textContent = text;
+        el.style.color = color || 'var(--text2)';
+    }
+}
+
+async function fetchFromGitHub() {
+    const cfg = getGitHubConfig();
+    if (!cfg.token) return null;
+    try {
+        const res = await fetch(`https://api.github.com/repos/${cfg.repo}/contents/${cfg.file}`, {
+            headers: { 'Authorization': 'token ' + cfg.token, 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        const content = decodeURIComponent(escape(atob(json.content)));
+        saveGitHubConfig({ sha: json.sha });
+        return JSON.parse(content);
+    } catch (e) {
+        console.error('GitHub fetch error:', e);
+        return null;
+    }
+}
+
+async function pushToGitHub(data) {
+    const cfg = getGitHubConfig();
+    if (!cfg.token) return false;
+    try {
+        const body = JSON.stringify(data, null, 2);
+        const encoded = btoa(unescape(encodeURIComponent(body)));
+        const payload = { message: 'Update stock_data.json', content: encoded };
+        if (cfg.sha) payload.sha = cfg.sha;
+        const res = await fetch(`https://api.github.com/repos/${cfg.repo}/contents/${cfg.file}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'token ' + cfg.token,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const json = await res.json();
+            saveGitHubConfig({ sha: json.content.sha });
+            return true;
+        }
+        return false;
+    } catch (e) {
+        console.error('GitHub push error:', e);
+        return false;
+    }
+}
+
+let _syncing = false;
+let _loadingFromGitHub = false;
+
+async function syncToGitHub(data) {
+    if (_syncing || _loadingFromGitHub) return;
+    _syncing = true;
+    setSyncStatus('Đang sync...', '#f57c00');
+    const ok = await pushToGitHub(data);
+    setSyncStatus(ok ? 'Đã sync' : 'Lỗi sync!', ok ? 'var(--profit)' : 'var(--loss)');
+    _syncing = false;
+    setTimeout(() => setSyncStatus(''), 3000);
+}
+
 function loadData() {
     try {
         const raw = localStorage.getItem(DB_KEY);
@@ -10,6 +99,8 @@ function loadData() {
 
 function saveData(data) {
     localStorage.setItem(DB_KEY, JSON.stringify(data));
+    const cfg = getGitHubConfig();
+    if (cfg.token) syncToGitHub(data);
 }
 
 function fmt(v) {

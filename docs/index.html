@@ -121,6 +121,7 @@
     <div class="header">
         <h1>📈 STOCK TRACKER</h1>
         <div class="header-actions">
+            <span id="sync-status" style="font-size:11px;margin-right:4px"></span>
             <button onclick="exportData()">📥 Export</button>
             <label style="cursor:pointer">
                 📤 Import
@@ -229,6 +230,31 @@
         <!-- TAB: QUẢN LÝ -->
         <div id="tab-manage" class="tab-content">
             <div class="card">
+                <div class="card-title">Đồng bộ GitHub</div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                    <div class="form-group">
+                        <label>GitHub Personal Access Token (PAT)</label>
+                        <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" style="font-size:12px">
+                    </div>
+                    <div class="form-group">
+                        <label>Repo (user/repo)</label>
+                        <input type="text" id="gh-repo" value="duypt-james/stock-tracker-web" style="font-size:12px">
+                    </div>
+                    <div class="form-group">
+                        <label>Tên file</label>
+                        <input type="text" id="gh-file" value="stock_data.json" style="font-size:12px">
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <button class="btn btn-primary" onclick="saveGHConfig()">💾 Lưu cài đặt</button>
+                        <button class="btn btn-green" onclick="pullFromGitHub()">⬇️ Tải từ GitHub</button>
+                    </div>
+                    <div style="font-size:11px;color:var(--text2);margin-top:4px">
+                        Tạo PAT tại <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a> với quyền <b>repo</b>. Dữ liệu sẽ tự động sync khi bạn thêm/sửa/xóa.
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
                 <div class="card-title">Thêm mã CP mới</div>
                 <div class="form-row">
                     <div class="form-group">
@@ -262,7 +288,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
     <script>
         function switchTab(name) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -275,6 +301,32 @@
             }
         }
 
+        function saveGHConfig() {
+            saveGitHubConfig({
+                token: document.getElementById('gh-token').value.trim(),
+                repo: document.getElementById('gh-repo').value.trim(),
+                file: document.getElementById('gh-file').value.trim()
+            });
+            alert('Đã lưu cài đặt GitHub!');
+        }
+
+        async function pullFromGitHub() {
+            setSyncStatus('Đang tải...', '#f57c00');
+            _loadingFromGitHub = true;
+            const data = await fetchFromGitHub();
+            if (data && data.stocks) {
+                localStorage.setItem(DB_KEY, JSON.stringify(data));
+                renderAll();
+                updateChartFilter();
+                setSyncStatus('Đã tải xong!', 'var(--profit)');
+                setTimeout(() => setSyncStatus(''), 3000);
+            } else {
+                setSyncStatus('Không tải được!', 'var(--loss)');
+                setTimeout(() => setSyncStatus(''), 3000);
+            }
+            _loadingFromGitHub = false;
+        }
+
         function editPriceFromSelect() {
             const code = document.getElementById('hist-code').value;
             if (!code) return;
@@ -285,13 +337,33 @@
             editPrice(code, last.date, last.price);
         }
 
-        // Set default date
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const today = new Date();
             const dd = String(today.getDate()).padStart(2, '0');
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const yyyy = today.getFullYear();
             document.getElementById('add-date').value = `${yyyy}-${mm}-${dd}`;
+
+            const cfg = getGitHubConfig();
+            if (cfg.token) {
+                document.getElementById('gh-token').value = cfg.token;
+                document.getElementById('gh-repo').value = cfg.repo;
+                document.getElementById('gh-file').value = cfg.file;
+                setSyncStatus('Đang sync...', '#f57c00');
+                _loadingFromGitHub = true;
+                const ghData = await fetchFromGitHub();
+                if (ghData && ghData.stocks) {
+                    localStorage.setItem(DB_KEY, JSON.stringify(ghData));
+                    setSyncStatus('Đã sync', 'var(--profit)');
+                    setTimeout(() => setSyncStatus(''), 3000);
+                } else {
+                    setSyncStatus('Không sync được', 'var(--loss)');
+                    setTimeout(() => setSyncStatus(''), 3000);
+                }
+                _loadingFromGitHub = false;
+            }
+            updateChartFilter();
+            renderAll();
         });
     </script>
 </body>
