@@ -110,7 +110,7 @@ function renderStockList(data) {
             <div class="stock-price">${latest ? fmt(latest) : '--'}</div>
             <div class="stock-pnl ${cls}">${latest ? fmtVND(pnl * 1000, true) : '--'}</div>
             <div class="stock-pct ${cls}">${latest ? (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%' : '--'}</div>
-            <button class="btn-icon btn-del" onclick="deleteStock('${stk.code}')">x</button>
+            <button class="btn-icon btn-del" onclick="deleteStock('${stk.code}')">Xóa</button>
         </div>`;
     }).join('');
 
