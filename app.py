@@ -168,7 +168,7 @@ with tab1:
             all_dates = sorted(all_dates, key=lambda x: datetime.strptime(x, "%d/%m/%Y"))
 
             if all_dates and show_stocks:
-                fig, ax = plt.subplots(figsize=(12, 5))
+                fig, ax = plt.subplots(figsize=(12, 5), dpi=200)
                 colors = ["#1a73e8", "#34a853", "#fbbc04", "#9334e6", "#ff6d01"]
                 n_dates = len(all_dates)
                 n_stocks = len(show_stocks)
@@ -200,19 +200,19 @@ with tab1:
                             ax.text(bar.get_x() + bar.get_width() / 2.,
                                     y + (offset if val >= 0 else -offset),
                                     fmt_vnd(val, sign=True), ha="center", va=va,
-                                    fontsize=6, color=color, fontweight="bold")
+                                    fontsize=7, color=color, fontweight="bold")
 
                 ax.set_xticks(list(range(n_dates)))
-                ax.set_xticklabels([d[:5] for d in all_dates], rotation=45, fontsize=8)
+                ax.set_xticklabels([d[:5] for d in all_dates], rotation=45, fontsize=9)
                 ax.axhline(y=0, color="#999", linewidth=0.8)
                 ax.spines["top"].set_visible(False)
                 ax.spines["right"].set_visible(False)
                 title = "Lãi/Lỗ so với giá gốc"
                 if filter_code != "Tất cả":
                     title += f" - {filter_code}"
-                ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
+                ax.set_title(title, fontsize=14, fontweight="bold", pad=10)
                 if n_stocks > 1:
-                    ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1), fontsize=9)
+                    ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1), fontsize=10)
                 ax.yaxis.set_major_formatter(
                     mticker.FuncFormatter(lambda x, p: fmt_vnd(x, sign=True)))
                 fig.tight_layout()
