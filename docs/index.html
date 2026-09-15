@@ -130,9 +130,9 @@
     </div>
 
     <div class="container">
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('overview', this)">📊 Tổng quan</div>
-            <div class="tab" onclick="switchTab('manage', this)">⚙️ Quản lý</div>
+        <div class="tabs" id="tab-bar">
+            <div class="tab active" data-tab="overview" onclick="switchTab('overview')">📊 Tổng quan</div>
+            <div class="tab" data-tab="manage" onclick="switchTab('manage')">⚙️ Quản lý</div>
         </div>
 
         <!-- TAB: TỔNG QUAN -->
@@ -262,12 +262,12 @@
         </div>
     </div>
 
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
     <script>
-        function switchTab(name, el) {
+        function switchTab(name) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            el.classList.add('active');
+            document.querySelector('.tab[data-tab="' + name + '"]').classList.add('active');
             document.getElementById('tab-' + name).classList.add('active');
             if (name === 'overview') {
                 renderAll();
