@@ -147,6 +147,8 @@ function getLatestPrice(data, code) {
 const chartLabelsPlugin = {
     id: 'chartLabels',
     afterDatasetsDraw(chart) {
+        const showLabels = document.getElementById('show-labels');
+        if (showLabels && !showLabels.checked) return;
         const ctx = chart.ctx;
         const yScale = chart.scales.y;
         const isPct = document.getElementById('chart-unit') && document.getElementById('chart-unit').value === 'pct';

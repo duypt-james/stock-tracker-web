@@ -184,6 +184,9 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                     <div class="card-title" style="margin:0">Biểu đồ lãi/lỗ</div>
                     <div style="display:flex;gap:6px;align-items:center">
+                        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap">
+                            <input type="checkbox" id="show-labels" checked onchange="renderChart(loadData())"> Số liệu
+                        </label>
                         <select id="chart-unit" onchange="renderChart(loadData())" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px">
                             <option value="vnd">VNĐ</option>
                             <option value="pct">%</option>
