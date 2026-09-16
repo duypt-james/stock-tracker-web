@@ -54,8 +54,10 @@ async function pushToGitHub(data) {
     try {
         const body = JSON.stringify(data, null, 2);
         const encoded = btoa(unescape(encodeURIComponent(body)));
-        const payload = { message: 'Update stock_data.json', content: encoded };
+        const payload = { message: 'Update stock_data.json from Stock Tracker', content: encoded };
         if (cfg.sha) payload.sha = cfg.sha;
+
+        console.log('GitHub push: sha=' + cfg.sha, 'repo=' + cfg.repo, 'file=' + cfg.file);
         const res = await fetch(`https://api.github.com/repos/${cfg.repo}/contents/${cfg.file}`, {
             method: 'PUT',
             headers: {
@@ -65,12 +67,24 @@ async function pushToGitHub(data) {
             },
             body: JSON.stringify(payload)
         });
+        const json = await res.json();
+        console.log('GitHub push response:', res.status, json);
+
         if (res.ok) {
-            const json = await res.json();
             saveGitHubConfig({ sha: json.content.sha });
             return true;
+        } else {
+            console.error('GitHub push failed:', json.message);
+            if (res.status === 422) {
+                console.log('SHA conflict - re-fetching...');
+                const fresh = await fetchFromGitHub();
+                if (fresh) {
+                    const retry = await pushToGitHub(data);
+                    return retry;
+                }
+            }
+            return false;
         }
-        return false;
     } catch (e) {
         console.error('GitHub push error:', e);
         return false;
@@ -85,9 +99,15 @@ async function syncToGitHub(data) {
     _syncing = true;
     setSyncStatus('Đang sync...', '#f57c00');
     const ok = await pushToGitHub(data);
-    setSyncStatus(ok ? 'Đã sync' : 'Lỗi sync!', ok ? 'var(--profit)' : 'var(--loss)');
+    if (ok) {
+        setSyncStatus('Đã sync', 'var(--profit)');
+    } else {
+        const cfg = getGitHubConfig();
+        setSyncStatus('Lỗi sync! Kiểm tra token/repo', 'var(--loss)');
+        console.error('Sync failed. Config:', cfg);
+    }
     _syncing = false;
-    setTimeout(() => setSyncStatus(''), 3000);
+    setTimeout(() => setSyncStatus(''), 5000);
 }
 
 function loadData() {

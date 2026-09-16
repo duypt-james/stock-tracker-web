@@ -247,6 +247,7 @@
                     <div style="display:flex;gap:8px;flex-wrap:wrap">
                         <button class="btn btn-primary" onclick="saveGHConfig()">💾 Lưu cài đặt</button>
                         <button class="btn btn-green" onclick="pullFromGitHub()">⬇️ Tải từ GitHub</button>
+                        <button class="btn btn-orange" onclick="pushNow()">⬆️ Đẩy lên GitHub</button>
                     </div>
                     <div style="font-size:11px;color:var(--text2);margin-top:4px">
                         Tạo PAT tại <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a> với quyền <b>repo</b>. Dữ liệu sẽ tự động sync khi bạn thêm/sửa/xóa.
@@ -288,7 +289,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=6"></script>
     <script>
         function switchTab(name) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -325,6 +326,14 @@
                 setTimeout(() => setSyncStatus(''), 3000);
             }
             _loadingFromGitHub = false;
+        }
+
+        async function pushNow() {
+            const data = loadData();
+            setSyncStatus('Đang đẩy...', '#f57c00');
+            const ok = await pushToGitHub(data);
+            setSyncStatus(ok ? 'Đã đẩy thành công!' : 'Lỗi đẩy! Xem console', ok ? 'var(--profit)' : 'var(--loss)');
+            setTimeout(() => setSyncStatus(''), 5000);
         }
 
         function editPriceFromSelect() {
