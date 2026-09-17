@@ -238,7 +238,7 @@ function renderStockList(data) {
 
     const avgSel = document.getElementById('avg-code');
     avgSel.innerHTML = data.stocks.map(s => `<option value="${s.code}">${s.code}</option>`).join('');
-    avgSel.onchange = () => renderAvgPrice();
+    avgSel.onchange = () => { _avgNewQty = 0; _avgNewPrice = 0; renderAvgPrice(); };
     renderAvgPrice();
 }
 
@@ -272,7 +272,7 @@ function renderHistory(data) {
     table.innerHTML = rows.join('');
 }
 
-let _avgNewQty = 100;
+let _avgNewQty = 0;
 let _avgNewPrice = 0;
 
 function renderAvgPrice() {
