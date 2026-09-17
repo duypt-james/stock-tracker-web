@@ -291,21 +291,66 @@ function renderAvgPrice() {
 
     document.getElementById('avg-tbody').innerHTML = `
         <tr>
-            <td style="padding:8px 12px;font-weight:600">${boughtQty.toLocaleString('vi-VN')}</td>
-            <td style="padding:8px 12px;text-align:right;font-weight:600">${fmt(boughtPrice)}</td>
-            <td style="padding:8px 12px;color:var(--primary)">${newQty ? newQty.toLocaleString('vi-VN') : '-'}</td>
-            <td style="padding:8px 12px;text-align:right;color:var(--primary)">${newPrice ? fmt(newPrice) : '-'}</td>
+            <td style="padding:8px 12px;font-weight:600;cursor:pointer" onclick="editAvgCell('${code}','qty',this)" title="Click để sửa">${boughtQty.toLocaleString('vi-VN')}</td>
+            <td style="padding:8px 12px;text-align:right;font-weight:600;cursor:pointer" onclick="editAvgCell('${code}','buy_price',this)" title="Click để sửa">${fmt(boughtPrice)}</td>
+            <td style="padding:8px 12px;color:var(--primary);cursor:pointer" onclick="editAvgNewCell('qty',this)" title="Click để sửa">${newQty ? newQty.toLocaleString('vi-VN') : '0'}</td>
+            <td style="padding:8px 12px;text-align:right;color:var(--primary);cursor:pointer" onclick="editAvgNewCell('price',this)" title="Click để sửa">${newPrice ? fmt(newPrice) : '0'}</td>
             <td style="padding:8px 12px;border-left:2px solid var(--border);font-weight:700">${totalQty.toLocaleString('vi-VN')}</td>
             <td style="padding:8px 12px;text-align:right;font-weight:700;color:var(--primary);font-size:15px">${newQty && newPrice ? fmt(avgPrice) : fmt(boughtPrice)}</td>
         </tr>
     `;
+}
 
-    document.getElementById('avg-bought-qty').textContent = boughtQty.toLocaleString('vi-VN');
-    document.getElementById('avg-bought-price').textContent = fmt(boughtPrice);
-    document.getElementById('avg-new-qty').textContent = newQty ? newQty.toLocaleString('vi-VN') : '-';
-    document.getElementById('avg-new-price').textContent = newPrice ? fmt(newPrice) : '-';
-    document.getElementById('avg-total-qty').textContent = totalQty.toLocaleString('vi-VN');
-    document.getElementById('avg-result').textContent = newQty && newPrice ? fmt(avgPrice) : fmt(boughtPrice);
+function editAvgCell(code, field, el) {
+    const data = loadData();
+    const stk = data.stocks.find(s => s.code === code);
+    if (!stk) return;
+    const oldVal = stk[field];
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.step = field === 'qty' ? '1' : '0.001';
+    input.value = oldVal;
+    input.style.cssText = 'width:90px;padding:4px 6px;border:2px solid var(--primary);border-radius:4px;font-size:13px;text-align:center;';
+    el.textContent = '';
+    el.appendChild(input);
+    input.focus();
+    input.select();
+    const confirm = () => {
+        let newVal = parseFloat(input.value);
+        if (isNaN(newVal) || newVal <= 0) newVal = oldVal;
+        if (field === 'qty') newVal = Math.round(newVal);
+        else newVal = normalizeNghin(newVal);
+        stk[field] = newVal;
+        saveData(data);
+        renderAll();
+    };
+    input.addEventListener('blur', confirm);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') confirm(); if (e.key === 'Escape') renderAll(); });
+}
+
+function editAvgNewCell(field, el) {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.step = field === 'qty' ? '1' : '0.001';
+    const currentVal = field === 'qty'
+        ? parseInt(document.getElementById('avg-new-qty-input').value) || 0
+        : parseFloat(document.getElementById('avg-new-price-input').value) || 0;
+    input.value = currentVal;
+    input.style.cssText = 'width:90px;padding:4px 6px;border:2px solid var(--primary);border-radius:4px;font-size:13px;text-align:center;';
+    el.textContent = '';
+    el.appendChild(input);
+    input.focus();
+    input.select();
+    const confirm = () => {
+        let newVal = parseFloat(input.value);
+        if (isNaN(newVal)) newVal = 0;
+        if (field === 'qty') newVal = Math.round(newVal);
+        else newVal = normalizeNghin(newVal);
+        document.getElementById(field === 'qty' ? 'avg-new-qty-input' : 'avg-new-price-input').value = newVal;
+        renderAvgPrice();
+    };
+    input.addEventListener('blur', confirm);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') confirm(); if (e.key === 'Escape') renderAvgPrice(); });
 }
 
 const capitalLabelsPlugin = {
