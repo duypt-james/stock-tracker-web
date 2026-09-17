@@ -235,6 +235,11 @@ function renderStockList(data) {
     const sel = document.getElementById('hist-code');
     sel.innerHTML = data.stocks.map(s => `<option value="${s.code}">${s.code}</option>`).join('');
     sel.onchange = () => renderHistory(data);
+
+    const avgSel = document.getElementById('avg-code');
+    avgSel.innerHTML = data.stocks.map(s => `<option value="${s.code}">${s.code}</option>`).join('');
+    avgSel.onchange = () => renderAvgPrice();
+    renderAvgPrice();
 }
 
 function renderHistory(data) {
@@ -265,6 +270,42 @@ function renderHistory(data) {
         </div>`;
     });
     table.innerHTML = rows.join('');
+}
+
+function renderAvgPrice() {
+    const code = document.getElementById('avg-code').value;
+    const data = loadData();
+    const stk = data.stocks.find(s => s.code === code);
+
+    if (!stk) {
+        document.getElementById('avg-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text2)">Chọn mã CP</td></tr>';
+        return;
+    }
+
+    const boughtQty = stk.qty;
+    const boughtPrice = stk.buy_price;
+    const newQty = parseInt(document.getElementById('avg-new-qty-input').value) || 0;
+    const newPrice = parseFloat(document.getElementById('avg-new-price-input').value) || 0;
+    const totalQty = boughtQty + newQty;
+    const avgPrice = totalQty > 0 ? ((boughtQty * boughtPrice) + (newQty * newPrice)) / totalQty : 0;
+
+    document.getElementById('avg-tbody').innerHTML = `
+        <tr>
+            <td style="padding:8px 12px;font-weight:600">${boughtQty.toLocaleString('vi-VN')}</td>
+            <td style="padding:8px 12px;text-align:right;font-weight:600">${fmt(boughtPrice)}</td>
+            <td style="padding:8px 12px;color:var(--primary)">${newQty ? newQty.toLocaleString('vi-VN') : '-'}</td>
+            <td style="padding:8px 12px;text-align:right;color:var(--primary)">${newPrice ? fmt(newPrice) : '-'}</td>
+            <td style="padding:8px 12px;border-left:2px solid var(--border);font-weight:700">${totalQty.toLocaleString('vi-VN')}</td>
+            <td style="padding:8px 12px;text-align:right;font-weight:700;color:var(--primary);font-size:15px">${newQty && newPrice ? fmt(avgPrice) : fmt(boughtPrice)}</td>
+        </tr>
+    `;
+
+    document.getElementById('avg-bought-qty').textContent = boughtQty.toLocaleString('vi-VN');
+    document.getElementById('avg-bought-price').textContent = fmt(boughtPrice);
+    document.getElementById('avg-new-qty').textContent = newQty ? newQty.toLocaleString('vi-VN') : '-';
+    document.getElementById('avg-new-price').textContent = newPrice ? fmt(newPrice) : '-';
+    document.getElementById('avg-total-qty').textContent = totalQty.toLocaleString('vi-VN');
+    document.getElementById('avg-result').textContent = newQty && newPrice ? fmt(avgPrice) : fmt(boughtPrice);
 }
 
 const capitalLabelsPlugin = {
