@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import os
+import requests
 from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
@@ -23,8 +24,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-#  DATA
+#  DATA — GitHub Gist sync
 # ============================================================
+GIST_FILENAME = "stock_data.json"
+
 DEFAULT_DATA = {"stocks": [], "history": {}}
 
 def fmt(v):
@@ -47,19 +50,79 @@ def get_latest_price(data, code):
     hist = data["history"].get(code, [])
     return hist[-1]["price"] if hist else None
 
-def load_data_from_file():
+def get_gist_config():
+    token = st.secrets.get("GITHUB_TOKEN", "")
+    gist_id = st.secrets.get("GIST_ID", "")
+    return token, gist_id
+
+def _ensure_valid(data):
+    if not isinstance(data, dict):
+        data = {}
+    data.setdefault("stocks", [])
+    data.setdefault("history", {})
+    return data
+
+def load_data():
+    token, gist_id = get_gist_config()
+    if token and gist_id:
+        try:
+            headers = {"Authorization": f"token {token}"}
+            resp = requests.get(f"https://api.github.com/gists/{gist_id}",
+                                headers=headers, timeout=10)
+            if resp.status_code == 200:
+                gist = resp.json()
+                if GIST_FILENAME in gist.get("files", {}):
+                    content = gist["files"][GIST_FILENAME]["content"]
+                    d = json.loads(content)
+                    if d:
+                        return _ensure_valid(d)
+            else:
+                st.warning(f"Gist API lỗi {resp.status_code}")
+        except Exception as e:
+            st.warning(f"Không đọc được Gist: {e}")
+
     path = "stock_data.json"
     if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                d = json.load(f)
+            if d:
+                return _ensure_valid(d)
+        except Exception:
+            pass
+
     return dict(DEFAULT_DATA)
 
-def save_data_to_file(data):
-    with open("stock_data.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def save(data):
+    token, gist_id = get_gist_config()
+    content = json.dumps(data, ensure_ascii=False, indent=2)
+    if token and gist_id:
+        try:
+            headers = {"Authorization": f"token {token}", "Content-Type": "application/json"}
+            payload = {"files": {GIST_FILENAME: {"content": content}}}
+            resp = requests.patch(f"https://api.github.com/gists/{gist_id}",
+                                  headers=headers, json=payload, timeout=10)
+            if resp.status_code == 200:
+                return True
+        except Exception:
+            pass
+    try:
+        with open("stock_data.json", "w", encoding="utf-8") as f:
+            f.write(content)
+        return True
+    except Exception:
+        return False
 
+# ============================================================
+#  AUTO-SAVE
+# ============================================================
 if "data" not in st.session_state:
-    st.session_state.data = load_data_from_file()
+    st.session_state.data = load_data()
+if "_dirty" not in st.session_state:
+    st.session_state._dirty = False
+
+def _set_dirty():
+    st.session_state._dirty = True
 
 data = st.session_state.data
 
@@ -75,7 +138,7 @@ with st.sidebar:
             if "stocks" in imported and "history" in imported:
                 st.session_state.data = imported
                 data = imported
-                save_data_to_file(data)
+                save(data)
                 st.success("Import thành công!")
                 st.rerun()
             else:
@@ -88,8 +151,12 @@ with st.sidebar:
                        file_name="stock_data.json", mime="application/json")
 
     st.divider()
-    st.caption("Stock Tracker v1.0")
-    st.caption("Deploy trên Streamlit Cloud")
+    token, gist_id = get_gist_config()
+    if token and gist_id:
+        st.caption("☁️ Đang dùng GitHub Gist")
+    else:
+        st.caption("💾 Đang dùng file local")
+    st.caption("Stock Tracker v1.1")
 
 # ============================================================
 #  HEADER
@@ -263,7 +330,7 @@ with tab1:
                         hist = data["history"].get(cd["code"], [])
                         data["history"][cd["code"]] = [h for h in hist
                                                         if h["date"] != cd["date"]]
-                        save_data_to_file(data)
+                        save(data)
                         del st.session_state["confirm_delete"]
                         st.rerun()
                 with dc2:
@@ -322,7 +389,7 @@ with tab1:
                                 if h["date"] == edit_date:
                                     h["price"] = new_price
                                     break
-                            save_data_to_file(data)
+                            save(data)
                             st.success(f"Đã cập nhật giá {edit_date}: {fmt(new_price)}")
                             st.rerun()
             else:
@@ -348,14 +415,14 @@ with tab1:
                         for h in data["history"][hist_code]:
                             if h["date"] == date_str:
                                 h["price"] = price
-                                save_data_to_file(data)
+                                save(data)
                                 st.success(f"Đã cập nhật {date_str}: {fmt(price)}")
                                 st.rerun()
                         data["history"][hist_code].append(
                             {"date": date_str, "price": price})
                         data["history"][hist_code].sort(
                             key=lambda x: datetime.strptime(x["date"], "%d/%m/%Y"))
-                        save_data_to_file(data)
+                        save(data)
                         st.success(f"Đã thêm {date_str}: {fmt(price)}")
                         st.rerun()
         else:
@@ -393,7 +460,7 @@ with tab2:
                     "code": new_code, "qty": new_qty, "buy_price": price})
                 if new_code not in data["history"]:
                     data["history"][new_code] = []
-                save_data_to_file(data)
+                save(data)
                 st.success(f"Đã thêm {new_code}!")
                 st.rerun()
 
@@ -426,14 +493,14 @@ with tab2:
                         key=f"qty_{code}", label_visibility="collapsed")
                     if new_qty != stk["qty"]:
                         stk["qty"] = new_qty
-                        save_data_to_file(data)
+                        save(data)
                 with mc3:
                     new_buy = st.number_input(
                         "Giá mua", value=stk["buy_price"], step=0.1,
                         format="%.3f", key=f"buy_{code}", label_visibility="collapsed")
                     if abs(new_buy - stk["buy_price"]) > 0.0001:
                         stk["buy_price"] = normalize_nghin(new_buy)
-                        save_data_to_file(data)
+                        save(data)
                 with mc4:
                     if latest:
                         st.metric("Lãi/Lỗ", fmt_vnd(pnl * 1000, sign=True),
@@ -452,10 +519,17 @@ with tab2:
                             data["stocks"] = [s for s in data["stocks"]
                                               if s["code"] != code]
                             data["history"].pop(code, None)
-                            save_data_to_file(data)
+                            save(data)
                             del st.session_state[f"confirm_del_stock_{code}"]
                             st.rerun()
                     with dc2:
                         if st.button("❌ Hủy", key=f"no_del_{code}"):
                             del st.session_state[f"confirm_del_stock_{code}"]
                             st.rerun()
+
+# ============================================================
+#  AUTO-SAVE at end of each rerun
+# ============================================================
+if st.session_state.get("_dirty", False):
+    st.session_state._dirty = False
+    save(data)
