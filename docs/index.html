@@ -49,6 +49,13 @@
         .hist-row:hover { background: #f8f9fa; }
         .stock-row:last-child, .hist-row:last-child { border-bottom: none; }
 
+        /* Khung lịch sử giá: cố định 12 dòng (34px/dòng), cuộn để xem thêm */
+        #hist-table { max-height: 408px; overflow-y: auto; }
+        #hist-table::-webkit-scrollbar { width: 8px; }
+        #hist-table::-webkit-scrollbar-track { background: transparent; }
+        #hist-table::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 4px; }
+        #hist-table::-webkit-scrollbar-thumb:hover { background: #b0b0b0; }
+
         .stock-code { font-weight: 700; color: var(--primary); }
         .profit { color: var(--profit); }
         .loss { color: var(--loss); }
