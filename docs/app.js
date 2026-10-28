@@ -611,16 +611,34 @@ function drawChartWindow() {
 
 function updateChartRange() {
     const el = document.getElementById('chart-range');
+    const prev = document.getElementById('chart-prev');
+    const next = document.getElementById('chart-next');
     if (!el) return;
-    if (!chartState) { el.textContent = ''; return; }
+    if (!chartState) {
+        el.textContent = '';
+        if (prev) prev.disabled = true;
+        if (next) next.disabled = true;
+        return;
+    }
     const { start, end, size, total } = chartWindowBounds();
     if (total <= CHART_WINDOW) {
         el.textContent = total + ' phiên';
     } else if (end === total) {
-        el.textContent = size + '/' + total + ' phiên mới nhất · kéo để xem thêm';
+        el.textContent = size + '/' + total + ' phiên mới nhất · kéo ngang để xem thêm';
     } else {
-        el.textContent = 'Phiên ' + (start + 1) + '–' + end + '/' + total + ' · kéo để xem thêm';
+        el.textContent = 'Phiên ' + (start + 1) + '–' + end + '/' + total + ' · kéo ngang để xem thêm';
     }
+    if (prev) prev.disabled = start <= 0;
+    if (next) next.disabled = end >= total;
+}
+
+// Nút ◀ ▶: lùi/tiến một trang 12 phiên
+function stepChartWindow(dir) {
+    if (!chartState) return;
+    const { start, size, total } = chartWindowBounds();
+    const maxStart = Math.max(0, total - size);
+    chartViewStart = Math.max(0, Math.min(maxStart, start + dir * size));
+    drawChartWindow();
 }
 
 function setupChartPan() {
@@ -671,26 +689,21 @@ function setupChartPan() {
         canvas.style.cursor = 'grab';
     };
 
-    canvas.addEventListener('mousedown', e => {
-        e.preventDefault();
+    canvas.addEventListener('pointerdown', e => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (e.pointerType !== 'mouse') e.preventDefault();
+        if (canvas.setPointerCapture) {
+            try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+        }
         begin(e.clientX, e.clientY);
     });
-    window.addEventListener('mousemove', e => {
-        if (drag) applyMove(e.clientX, e.clientY);
+    window.addEventListener('pointermove', e => {
+        if (!drag) return;
+        if (applyMove(e.clientX, e.clientY) && e.cancelable) e.preventDefault();
     });
-    window.addEventListener('mouseup', finish);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
     window.addEventListener('blur', finish);
-
-    canvas.addEventListener('touchstart', e => {
-        if (e.touches.length === 1) begin(e.touches[0].clientX, e.touches[0].clientY);
-    }, { passive: true });
-    canvas.addEventListener('touchmove', e => {
-        if (!drag || e.touches.length !== 1) return;
-        const t = e.touches[0];
-        if (applyMove(t.clientX, t.clientY) && e.cancelable) e.preventDefault();
-    }, { passive: false });
-    canvas.addEventListener('touchend', finish);
-    canvas.addEventListener('touchcancel', finish);
 }
 
 function addStock() {
