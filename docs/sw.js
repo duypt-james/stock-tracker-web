@@ -1,4 +1,4 @@
-const CACHE = 'stock-tracker-v14';
+const CACHE = 'stock-tracker-v15';
 const ASSETS = ['index.html', 'app.js', 'manifest.json'];
 
 self.addEventListener('install', e => {

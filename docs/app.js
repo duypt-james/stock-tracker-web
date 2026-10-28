@@ -152,6 +152,9 @@ const chartLabelsPlugin = {
         const ctx = chart.ctx;
         const yScale = chart.scales.y;
         const isPct = document.getElementById('chart-unit') && document.getElementById('chart-unit').value === 'pct';
+        // cột quá hẹp thì bỏ nhãn số để khỏi chồng chữ (vd: chế độ xem tất cả)
+        const firstBar = chart.getDatasetMeta(0).data[0];
+        if (!firstBar || firstBar.width < 12) return;
         chart.data.datasets.forEach((dataset, i) => {
             const meta = chart.getDatasetMeta(i);
             meta.data.forEach((bar, index) => {
@@ -498,11 +501,40 @@ function renderPieChart(data) {
     }
 }
 
-// --- Biểu đồ: chỉ hiện CHART_WINDOW phiên, kéo chuột để xem các phiên cũ hơn ---
-const CHART_WINDOW = 15;
+// --- Biểu đồ: hiển thị N phiên (nhập số hoặc "all"), kéo chuột để xem các phiên cũ hơn ---
+const CHART_SIZE_KEY = 'stock_tracker_chart_window';
+const CHART_DEFAULT_SIZE = 15;
 const CHART_COLORS = ['#1a73e8', '#34a853', '#fbbc04', '#9334e6', '#ff6d01'];
 let chartViewStart = null;  // index phiên đầu tiên của cửa sổ đang xem
 let chartState = null;      // dữ liệu của lần render gần nhất
+let chartSizeInput = '';
+
+try { chartSizeInput = localStorage.getItem(CHART_SIZE_KEY) || ''; } catch (_) {}
+if (!chartSizeInput) chartSizeInput = String(CHART_DEFAULT_SIZE);
+
+function isAllSize(raw) {
+    const s = (raw || '').trim().toLowerCase();
+    return s === 'all' || s === 'tất cả' || s === 'tat ca' || s === 'tá cả';
+}
+
+// Số phiên thực tế sẽ vẽ (đã giới hạn theo tổng số phiên)
+function chartSizeValue(total) {
+    if (isAllSize(chartSizeInput)) return total;
+    const n = parseInt(chartSizeInput, 10);
+    if (!n || n < 1) return Math.min(CHART_DEFAULT_SIZE, total);
+    return Math.min(n, total);
+}
+
+// Nhập số phiên muốn xem (hoặc "all" để xem tất cả)
+function applyChartWindowInput() {
+    const el = document.getElementById('chart-window');
+    if (!el) return;
+    chartSizeInput = el.value;
+    try { localStorage.setItem(CHART_SIZE_KEY, chartSizeInput); } catch (_) {}
+    if (!chartState) return;
+    chartViewStart = null;          // đổi số phiên -> quay về các phiên mới nhất
+    drawChartWindow();
+}
 
 function renderChart(data) {
     const filter = document.getElementById('chart-filter').value;
@@ -531,10 +563,10 @@ function renderChart(data) {
     drawChartWindow();
 }
 
-// Cửa sổ đang xem: luôn tối đa CHART_WINDOW phiên, mặc định là các phiên mới nhất
+// Cửa sổ đang xem: tối đa N phiên (N nhập ở ô chọn), mặc định là các phiên mới nhất
 function chartWindowBounds() {
     const total = chartState.dates.length;
-    const size = Math.min(CHART_WINDOW, total);
+    const size = chartSizeValue(total);
     const maxStart = Math.max(0, total - size);
     let start = chartViewStart === null ? maxStart : chartViewStart;
     start = Math.max(0, Math.min(start, maxStart));
@@ -614,34 +646,16 @@ function drawChartWindow() {
 
 function updateChartRange() {
     const el = document.getElementById('chart-range');
-    const prev = document.getElementById('chart-prev');
-    const next = document.getElementById('chart-next');
     if (!el) return;
-    if (!chartState) {
-        el.textContent = '';
-        if (prev) prev.disabled = true;
-        if (next) next.disabled = true;
-        return;
-    }
+    if (!chartState) { el.textContent = ''; return; }
     const { start, end, size, total } = chartWindowBounds();
-    if (total <= CHART_WINDOW) {
-        el.textContent = total + ' phiên';
+    if (size >= total) {
+        el.textContent = 'Tất cả ' + total + ' phiên';
     } else if (end === total) {
         el.textContent = size + '/' + total + ' phiên mới nhất · kéo ngang để xem thêm';
     } else {
         el.textContent = 'Phiên ' + (start + 1) + '–' + end + '/' + total + ' · kéo ngang để xem thêm';
     }
-    if (prev) prev.disabled = start <= 0;
-    if (next) next.disabled = end >= total;
-}
-
-// Nút ◀ ▶: lùi/tiến một trang 12 phiên
-function stepChartWindow(dir) {
-    if (!chartState) return;
-    const { start, size, total } = chartWindowBounds();
-    const maxStart = Math.max(0, total - size);
-    chartViewStart = Math.max(0, Math.min(maxStart, start + dir * size));
-    drawChartWindow();
 }
 
 function setupChartPan() {
@@ -669,7 +683,7 @@ function setupChartPan() {
         if (Math.abs(dx) < 4) return false;
         const total = chartState ? chartState.dates.length : 0;
         if (!total) return true;
-        const size = Math.min(CHART_WINDOW, total);
+        const size = chartSizeValue(total);
         const maxStart = Math.max(0, total - size);
         const shift = Math.round(-dx / bw);              // kéo sang trái => xem phiên mới hơn
         const next = Math.max(0, Math.min(maxStart, drag.start + shift));
@@ -864,6 +878,8 @@ function updateChartFilter() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    const sizeEl = document.getElementById('chart-window');
+    if (sizeEl) sizeEl.value = chartSizeInput;
     updateChartFilter();
     renderAll();
 });

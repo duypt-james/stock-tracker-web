@@ -65,9 +65,7 @@
 
         .chart-wrap { position: relative; height: 280px; }
         #chart { width: 100% !important; height: 100% !important; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
-        .chart-nav { border: 1px solid var(--border); background: var(--card); border-radius: 6px; width: 26px; height: 22px; padding: 0; font-size: 11px; line-height: 1; cursor: pointer; color: var(--text); }
-        .chart-nav:hover:not(:disabled) { background: #f0f2f5; }
-        .chart-nav:disabled { opacity: .35; cursor: default; }
+        .chart-win-input { width: 48px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; text-align: center; }
 
         .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; margin-top: 10px; align-items: end; }
         .form-group { display: flex; flex-direction: column; gap: 4px; }
@@ -194,9 +192,14 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                         <div class="card-title" style="margin:0">Biểu đồ lãi/lỗ</div>
-                        <button type="button" id="chart-prev" class="chart-nav" onclick="stepChartWindow(-1)" title="Xem 12 phiên trước">◀</button>
+                        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text2);white-space:nowrap">
+                            Hiển thị
+                            <input type="text" id="chart-window" class="chart-win-input" value="15" inputmode="numeric"
+                                   oninput="applyChartWindowInput()" onchange="applyChartWindowInput()"
+                                   title="Nhập số phiên cần xem, hoặc 'all' để xem tất cả">
+                            phiên
+                        </label>
                         <span id="chart-range" style="font-size:11px;color:var(--text2)"></span>
-                        <button type="button" id="chart-next" class="chart-nav" onclick="stepChartWindow(1)" title="Xem 12 phiên sau">▶</button>
                     </div>
                     <div style="display:flex;gap:6px;align-items:center">
                         <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap">
@@ -333,7 +336,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=11"></script>
+    <script src="app.js?v=12"></script>
     <script>
         function switchTab(name) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
