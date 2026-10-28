@@ -498,6 +498,12 @@ function renderPieChart(data) {
     }
 }
 
+// --- Biểu đồ: chỉ hiện CHART_WINDOW phiên, kéo chuột để xem các phiên cũ hơn ---
+const CHART_WINDOW = 12;
+const CHART_COLORS = ['#1a73e8', '#34a853', '#fbbc04', '#9334e6', '#ff6d01'];
+let chartViewStart = null;  // index phiên đầu tiên của cửa sổ đang xem
+let chartState = null;      // dữ liệu của lần render gần nhất
+
 function renderChart(data) {
     const filter = document.getElementById('chart-filter').value;
     const unit = document.getElementById('chart-unit') ? document.getElementById('chart-unit').value : 'vnd';
@@ -514,16 +520,38 @@ function renderChart(data) {
     });
 
     if (!dates.length || !showStocks.length) {
+        chartState = null;
         if (chart) { chart.destroy(); chart = null; }
+        updateChartRange();
         return;
     }
 
-    const isPct = unit === 'pct';
-    const colors = ['#1a73e8', '#34a853', '#fbbc04', '#9334e6', '#ff6d01'];
-    const datasets = showStocks.map((stk, i) => {
+    chartState = { dates, showStocks, history: data.history, isPct: unit === 'pct' };
+    setupChartPan();
+    drawChartWindow();
+}
+
+// Cửa sổ đang xem: luôn tối đa CHART_WINDOW phiên, mặc định là các phiên mới nhất
+function chartWindowBounds() {
+    const total = chartState.dates.length;
+    const size = Math.min(CHART_WINDOW, total);
+    const maxStart = Math.max(0, total - size);
+    let start = chartViewStart === null ? maxStart : chartViewStart;
+    start = Math.max(0, Math.min(start, maxStart));
+    chartViewStart = start;
+    return { start, end: start + size, size, total };
+}
+
+function drawChartWindow() {
+    if (!chartState) return;
+    const { start, end } = chartWindowBounds();
+    const viewDates = chartState.dates.slice(start, end);
+    const isPct = chartState.isPct;
+
+    const datasets = chartState.showStocks.map((stk, i) => {
         const priceMap = {};
-        (data.history[stk.code] || []).forEach(h => priceMap[h.date] = h.price);
-        const profits = dates.map(d => {
+        (chartState.history[stk.code] || []).forEach(h => priceMap[h.date] = h.price);
+        const profits = viewDates.map(d => {
             const p = priceMap[d];
             if (!p) return null;
             if (isPct) return ((p - stk.buy_price) / stk.buy_price * 100);
@@ -532,8 +560,8 @@ function renderChart(data) {
         return {
             label: stk.code,
             data: profits,
-            backgroundColor: colors[i % colors.length] + 'cc',
-            borderColor: colors[i % colors.length],
+            backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + 'cc',
+            borderColor: CHART_COLORS[i % CHART_COLORS.length],
             borderWidth: 1,
             borderRadius: 3
         };
@@ -545,20 +573,21 @@ function renderChart(data) {
         type: 'bar',
         plugins: [chartLabelsPlugin],
         data: {
-            labels: dates.map(d => d.substring(0, 5)),
+            labels: viewDates.map(d => d.substring(0, 5)),
             datasets
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             layout: { padding: { top: 20 } },
             plugins: {
-                legend: { display: showStocks.length > 1, position: 'top', align: 'end' },
+                legend: { display: chartState.showStocks.length > 1, position: 'top', align: 'end' },
                 tooltip: {
                     callbacks: {
-                        label: ctx => {
-                            if (isPct) return ctx.dataset.label + ': ' + ctx.raw.toFixed(2) + '%';
-                            return ctx.dataset.label + ': ' + fmtVND(ctx.raw, true) + ' VND';
+                        label: c => {
+                            if (isPct) return c.dataset.label + ': ' + c.raw.toFixed(2) + '%';
+                            return c.dataset.label + ': ' + fmtVND(c.raw, true) + ' VND';
                         }
                     }
                 },
@@ -577,6 +606,91 @@ function renderChart(data) {
             }
         }
     });
+    updateChartRange();
+}
+
+function updateChartRange() {
+    const el = document.getElementById('chart-range');
+    if (!el) return;
+    if (!chartState) { el.textContent = ''; return; }
+    const { start, end, size, total } = chartWindowBounds();
+    if (total <= CHART_WINDOW) {
+        el.textContent = total + ' phiên';
+    } else if (end === total) {
+        el.textContent = size + '/' + total + ' phiên mới nhất · kéo để xem thêm';
+    } else {
+        el.textContent = 'Phiên ' + (start + 1) + '–' + end + '/' + total + ' · kéo để xem thêm';
+    }
+}
+
+function setupChartPan() {
+    const canvas = document.getElementById('chart');
+    if (!canvas || canvas.dataset.panReady) return;
+    canvas.dataset.panReady = '1';
+    canvas.style.cursor = 'grab';
+
+    let drag = null;
+
+    const barWidth = () => {
+        const n = chart && chart.data.labels ? chart.data.labels.length : 0;
+        const w = chart && chart.chartArea ? chart.chartArea.width : 0;
+        return n && w ? w / n : 0;
+    };
+
+    // Trả về true nếu cử chỉ là kéo ngang (đã xử lý)
+    const applyMove = (x, y) => {
+        if (!drag) return false;
+        const bw = barWidth();
+        if (!bw) return false;
+        const dx = x - drag.x0;
+        const dy = y - drag.y0;
+        if (Math.abs(dx) < Math.abs(dy)) return false;   // kéo dọc -> để trang cuộn bình thường
+        if (Math.abs(dx) < 4) return false;
+        const total = chartState ? chartState.dates.length : 0;
+        if (!total) return true;
+        const size = Math.min(CHART_WINDOW, total);
+        const maxStart = Math.max(0, total - size);
+        const shift = Math.round(-dx / bw);              // kéo sang trái => xem phiên mới hơn
+        const next = Math.max(0, Math.min(maxStart, drag.start + shift));
+        if (next !== chartViewStart) {
+            chartViewStart = next;
+            drawChartWindow();
+        }
+        return true;
+    };
+
+    const begin = (x, y) => {
+        if (!chartState) return;
+        chartWindowBounds();
+        drag = { x0: x, y0: y, start: chartViewStart };
+        canvas.style.cursor = 'grabbing';
+    };
+
+    const finish = () => {
+        drag = null;
+        canvas.style.cursor = 'grab';
+    };
+
+    canvas.addEventListener('mousedown', e => {
+        e.preventDefault();
+        begin(e.clientX, e.clientY);
+    });
+    window.addEventListener('mousemove', e => {
+        if (drag) applyMove(e.clientX, e.clientY);
+    });
+    window.addEventListener('mouseup', finish);
+    window.addEventListener('blur', finish);
+
+    canvas.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) begin(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    canvas.addEventListener('touchmove', e => {
+        if (!drag || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        if (applyMove(t.clientX, t.clientY) && e.cancelable) e.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchend', finish);
+    canvas.addEventListener('touchcancel', finish);
 }
 
 function addStock() {

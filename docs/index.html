@@ -64,7 +64,7 @@
         .btn-del:hover { background: #fce8e6; }
 
         .chart-wrap { position: relative; height: 280px; }
-        #chart { width: 100% !important; height: 100% !important; }
+        #chart { width: 100% !important; height: 100% !important; touch-action: pan-y; }
 
         .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; margin-top: 10px; align-items: end; }
         .form-group { display: flex; flex-direction: column; gap: 4px; }
@@ -189,7 +189,10 @@
 
             <div class="card">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-                    <div class="card-title" style="margin:0">Biểu đồ lãi/lỗ</div>
+                    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+                        <div class="card-title" style="margin:0">Biểu đồ lãi/lỗ</div>
+                        <span id="chart-range" style="font-size:11px;color:var(--text2)"></span>
+                    </div>
                     <div style="display:flex;gap:6px;align-items:center">
                         <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap">
                             <input type="checkbox" id="show-labels" checked onchange="renderChart(loadData())"> Số liệu
@@ -325,7 +328,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=8"></script>
+    <script src="app.js?v=9"></script>
     <script>
         function switchTab(name) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
