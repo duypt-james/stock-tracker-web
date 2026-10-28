@@ -499,7 +499,7 @@ function renderPieChart(data) {
 }
 
 // --- Biểu đồ: chỉ hiện CHART_WINDOW phiên, kéo chuột để xem các phiên cũ hơn ---
-const CHART_WINDOW = 12;
+const CHART_WINDOW = 15;
 const CHART_COLORS = ['#1a73e8', '#34a853', '#fbbc04', '#9334e6', '#ff6d01'];
 let chartViewStart = null;  // index phiên đầu tiên của cửa sổ đang xem
 let chartState = null;      // dữ liệu của lần render gần nhất
@@ -563,7 +563,10 @@ function drawChartWindow() {
             backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + 'cc',
             borderColor: CHART_COLORS[i % CHART_COLORS.length],
             borderWidth: 1,
-            borderRadius: 3
+            borderRadius: 3,
+            // cột mảnh bằng 2/3 mặc định (0.9 -> 0.6)
+            barPercentage: 0.6,
+            categoryPercentage: 0.8
         };
     });
 
