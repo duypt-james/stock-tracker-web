@@ -199,6 +199,9 @@
                                    title="Nhập số phiên cần xem, hoặc 'all' để xem tất cả">
                             phiên
                         </label>
+                        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap">
+                            <input type="checkbox" id="chart-all" onchange="toggleChartAll(this.checked)"> Tất cả
+                        </label>
                         <span id="chart-range" style="font-size:11px;color:var(--text2)"></span>
                     </div>
                     <div style="display:flex;gap:6px;align-items:center">
@@ -336,7 +339,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=12"></script>
+    <script src="app.js?v=13"></script>
     <script>
         function switchTab(name) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));

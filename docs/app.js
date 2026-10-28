@@ -152,18 +152,27 @@ const chartLabelsPlugin = {
         const ctx = chart.ctx;
         const yScale = chart.scales.y;
         const isPct = document.getElementById('chart-unit') && document.getElementById('chart-unit').value === 'pct';
-        // cột quá hẹp thì bỏ nhãn số để khỏi chồng chữ (vd: chế độ xem tất cả)
+        const n = chart.data.labels.length;
         const firstBar = chart.getDatasetMeta(0).data[0];
-        if (!firstBar || firstBar.width < 12) return;
+        if (!firstBar || !n) return;
+
+        // Ước lượng bề rộng nhãn để quyết định giãn cách: cột càng nhiều càng thưa
+        const labelWidth = isPct ? 42 : 48;
+        const catWidth = chart.chartArea.width / n;
+        const step = Math.max(1, Math.ceil(labelWidth / Math.max(catWidth, 1)));
+        const fontSize = step > 1 ? 8 : 9;
+
         chart.data.datasets.forEach((dataset, i) => {
             const meta = chart.getDatasetMeta(i);
             meta.data.forEach((bar, index) => {
+                // giãn cách nhưng luôn giữ phiên mới nhất (bên phải)
+                if (step > 1 && (n - 1 - index) % step !== 0) return;
                 const value = dataset.data[index];
                 if (value === null || value === undefined) return;
                 const text = isPct ? value.toFixed(2) + '%' : fmtVND(value, true);
                 const yPos = yScale.getPixelForValue(value);
                 ctx.save();
-                ctx.font = 'bold 9px -apple-system, sans-serif';
+                ctx.font = 'bold ' + fontSize + 'px -apple-system, sans-serif';
                 ctx.fillStyle = dataset.borderColor;
                 ctx.textAlign = 'center';
                 const x = bar.x;
@@ -508,13 +517,19 @@ const CHART_COLORS = ['#1a73e8', '#34a853', '#fbbc04', '#9334e6', '#ff6d01'];
 let chartViewStart = null;  // index phiên đầu tiên của cửa sổ đang xem
 let chartState = null;      // dữ liệu của lần render gần nhất
 let chartSizeInput = '';
+let chartLastNumeric = String(CHART_DEFAULT_SIZE);
 
 try { chartSizeInput = localStorage.getItem(CHART_SIZE_KEY) || ''; } catch (_) {}
 if (!chartSizeInput) chartSizeInput = String(CHART_DEFAULT_SIZE);
+if (!isAllSize(chartSizeInput)) chartLastNumeric = chartSizeInput;
 
 function isAllSize(raw) {
     const s = (raw || '').trim().toLowerCase();
     return s === 'all' || s === 'tất cả' || s === 'tat ca' || s === 'tá cả';
+}
+
+function saveChartSize() {
+    try { localStorage.setItem(CHART_SIZE_KEY, chartSizeInput); } catch (_) {}
 }
 
 // Số phiên thực tế sẽ vẽ (đã giới hạn theo tổng số phiên)
@@ -530,9 +545,34 @@ function applyChartWindowInput() {
     const el = document.getElementById('chart-window');
     if (!el) return;
     chartSizeInput = el.value;
-    try { localStorage.setItem(CHART_SIZE_KEY, chartSizeInput); } catch (_) {}
+    const all = isAllSize(chartSizeInput);
+    if (!all) {
+        const n = parseInt(chartSizeInput, 10);
+        if (n > 0) chartLastNumeric = String(n);
+    }
+    const cb = document.getElementById('chart-all');
+    if (cb && cb.checked !== all) cb.checked = all;
+    saveChartSize();
     if (!chartState) return;
     chartViewStart = null;          // đổi số phiên -> quay về các phiên mới nhất
+    drawChartWindow();
+}
+
+// Checkbox "Tất cả"
+function toggleChartAll(on) {
+    const el = document.getElementById('chart-window');
+    if (on) {
+        chartSizeInput = 'all';
+    } else {
+        chartSizeInput = chartLastNumeric || String(CHART_DEFAULT_SIZE);
+    }
+    if (el) {
+        el.value = chartSizeInput;
+        el.disabled = !!on;
+    }
+    saveChartSize();
+    if (!chartState) return;
+    chartViewStart = null;
     drawChartWindow();
 }
 
@@ -879,7 +919,10 @@ function updateChartFilter() {
 
 document.addEventListener('DOMContentLoaded', () => {
     const sizeEl = document.getElementById('chart-window');
-    if (sizeEl) sizeEl.value = chartSizeInput;
+    const allEl = document.getElementById('chart-all');
+    const all = isAllSize(chartSizeInput);
+    if (sizeEl) { sizeEl.value = chartSizeInput; sizeEl.disabled = all; }
+    if (allEl) allEl.checked = all;
     updateChartFilter();
     renderAll();
 });
