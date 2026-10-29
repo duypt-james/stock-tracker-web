@@ -32,12 +32,20 @@
         .container { max-width: 1200px; margin: 0 auto; padding: 12px; }
 
         .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-        .metric { background: var(--card); border-radius: var(--radius); padding: 14px 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .metric { background: var(--card); border-radius: var(--radius); padding: 14px 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; transition: background .15s, box-shadow .15s; }
+        .metric.pos { background: #e9f7ee; box-shadow: inset 0 0 0 1px #bfe6cd; }
+        .metric.neg { background: #fdecea; box-shadow: inset 0 0 0 1px #f6c6c1; }
         .metric-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
-        .metric-value { font-size: 16px; font-weight: 700; }
+        .metric-value { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .metric-unit { font-size: 11px; font-weight: 600; color: var(--text2); margin-left: 2px; }
 
         .card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
         .card-title { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 12px; }
+
+        .portfolio { display: flex; gap: 16px; flex-wrap: wrap; }
+        .portfolio-list, .portfolio-capital { flex: 1 1 300px; min-width: 0; }
+        .portfolio-pie { flex: 0 0 250px; min-width: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        @media (max-width: 1100px) { .portfolio-list { flex-basis: 100%; } }
 
         .stock-header, .hist-header { display: grid; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text2); padding: 6px 8px; background: #f5f5f5; border-radius: 6px; margin-bottom: 6px; }
         .stock-header { grid-template-columns: 50px 40px 60px 60px 70px 50px 25px; }
@@ -57,6 +65,10 @@
         #hist-table::-webkit-scrollbar-thumb:hover { background: #b0b0b0; }
 
         .stock-code { font-weight: 700; color: var(--primary); }
+        .stock-qty, .stock-buy, .stock-price, .stock-pnl, .stock-pct { text-align: right; font-variant-numeric: tabular-nums; }
+        .stock-header span:nth-child(n+2):not(:last-child) { text-align: right; }
+        .hist-row > span:not(.h-date), .hist-header span:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+        .stock-sub { display: none; }
         .profit { color: var(--profit); }
         .loss { color: var(--loss); }
         .btn-icon { background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
@@ -71,6 +83,19 @@
         .form-group { display: flex; flex-direction: column; gap: 4px; }
         .form-group label { font-size: 11px; color: var(--text2); font-weight: 600; }
         .form-group input, .form-group select { padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+
+        .quick-entry { background: #f8f9fb; border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+        .qe-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+        .qe-head input[type="date"] { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+        .qe-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+        .qe-item { display: flex; align-items: center; gap: 8px; }
+        .qe-code { font-weight: 700; color: var(--primary); font-size: 13px; min-width: 38px; }
+        .qe-input { flex: 1; min-width: 0; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; background: #fff; }
+        .qe-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+        .toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(16px); background: #323232; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; z-index: 300; max-width: calc(100vw - 32px); text-align: center; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.err { background: #c5221f; }
 
         .btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
         .btn-primary { background: var(--primary); color: #fff; }
@@ -97,31 +122,52 @@
         .import-export { display: flex; gap: 8px; margin-top: 8px; }
 
         @media (max-width: 767px) {
-            .header { padding: 12px 14px; }
+            .header { padding: 10px 14px; min-height: 49px; }
             .header h1 { font-size: 16px; }
             .header-actions button { padding: 5px 8px; font-size: 11px; }
             .container { padding: 8px; }
             .metric { padding: 10px 8px; }
-            .metric-value { font-size: 14px; }
+            .metric-value { font-size: 15px; }
             .card { padding: 12px; }
             .card-title { font-size: 14px; }
             .stock-header, .hist-header { display: none; }
-            .stock-row { grid-template-columns: 1fr auto auto auto auto; font-size: 12px; gap: 6px; }
-            .stock-qty, .stock-price { display: none; }
-            .hist-row { grid-template-columns: 1fr 1fr 1fr 1fr; font-size: 12px; gap: 4px; }
-            .h-date { grid-column: 1 / -1; font-weight: 600; }
+            .stock-row {
+                grid-template-columns: 1fr auto auto;
+                grid-template-areas:
+                    "code pct del"
+                    "sub  sub pnl";
+                font-size: 12px;
+                gap: 2px 6px;
+            }
+            .stock-row .stock-code { grid-area: code; }
+            .stock-row .stock-pct { grid-area: pct; }
+            .stock-row .stock-pnl { grid-area: pnl; }
+            .stock-row .btn-del { grid-area: del; justify-self: end; }
+            .stock-row .stock-sub { grid-area: sub; display: block; font-size: 11px; color: var(--text2); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .stock-qty, .stock-buy, .stock-price { display: none; }
+            .btn-icon { padding: 5px 8px; }
+            .hist-row { grid-template-columns: 1fr 1fr 1fr 1fr; font-size: 12px; gap: 4px; text-align: right; }
+            .h-date { grid-column: 1 / -1; font-weight: 600; text-align: left; }
+            #hist-table { max-height: 60vh; }
             .form-row { grid-template-columns: 1fr 1fr; }
             .form-row .btn { grid-column: 1 / -1; }
-            .tabs { position: sticky; top: 48px; z-index: 99; }
+            .tabs { position: sticky; top: 49px; z-index: 99; }
             .tab { padding: 8px; font-size: 13px; }
             .chart-wrap { height: 220px; }
             .import-export { flex-direction: column; }
             .import-export .btn { width: 100%; text-align: center; }
+            .qe-list { grid-template-columns: 1fr; }
+            .qe-actions .btn { width: 100%; }
         }
         @media (min-width: 768px) {
             .metrics { grid-template-columns: repeat(4, 1fr); }
             .metric-value { font-size: 20px; }
             .chart-wrap { height: 350px; }
+        }
+        /* Danh mục chiếm cả hàng ở tablet: giãn cột theo bề rộng để không dồn về bên trái */
+        @media (min-width: 768px) and (max-width: 1100px) {
+            .stock-header, .stock-row { grid-template-columns: 1.1fr 0.7fr 1fr 1fr 1.2fr 0.9fr 56px; }
+            .stock-row .btn-del { justify-self: end; }
         }
     </style>
 </head>
@@ -129,12 +175,7 @@
     <div class="header">
         <h1>📈 STOCK TRACKER</h1>
         <div class="header-actions">
-            <span id="sync-status" style="font-size:11px;margin-right:4px"></span>
-            <button onclick="exportData()">📥 Export</button>
-            <label style="cursor:pointer">
-                📤 Import
-                <input type="file" accept=".json" onchange="importData(this)" style="display:none">
-            </label>
+            <span id="sync-status" style="font-size:11px"></span>
         </div>
     </div>
 
@@ -147,39 +188,39 @@
         <!-- TAB: TỔNG QUAN -->
         <div id="tab-overview" class="tab-content active">
             <div class="metrics">
-                <div class="metric">
+                <div class="metric" id="metric-invest" onclick="toggleMetric(this)" title="Chạm để xem số đầy đủ">
                     <div class="metric-label">Tổng đầu tư</div>
                     <div class="metric-value" id="sum-invest">0</div>
                 </div>
-                <div class="metric">
+                <div class="metric" id="metric-value" onclick="toggleMetric(this)" title="Chạm để xem số đầy đủ">
                     <div class="metric-label">Giá trị hiện tại</div>
                     <div class="metric-value" id="sum-value">0</div>
                 </div>
-                <div class="metric">
+                <div class="metric" id="metric-profit" onclick="toggleMetric(this)" title="Chạm để xem số đầy đủ">
                     <div class="metric-label">Lợi nhuận</div>
                     <div class="metric-value" id="sum-profit">0</div>
                 </div>
-                <div class="metric">
+                <div class="metric" id="metric-pct">
                     <div class="metric-label">Tỷ lệ</div>
                     <div class="metric-value" id="sum-pct">0%</div>
                 </div>
             </div>
 
-            <div class="card" style="display:flex;gap:16px;flex-wrap:wrap">
-                <div style="flex:1;min-width:300px">
+            <div class="card portfolio">
+                <div class="portfolio-list">
                     <div class="card-title">Danh mục cổ phiếu</div>
                     <div class="stock-header">
                         <span>Mã</span><span>SL</span><span>Mua</span><span>HT</span><span>Lãi/Lỗ</span><span>%</span><span></span>
                     </div>
                     <div id="stock-list"></div>
                 </div>
-                <div style="flex:1;min-width:300px">
+                <div class="portfolio-capital">
                     <div class="card-title">Vốn & Lãi/Lỗ</div>
                     <div style="position:relative;width:100%;height:220px">
                         <canvas id="capital-chart"></canvas>
                     </div>
                 </div>
-                <div style="flex:0 0 250px;min-width:220px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <div class="portfolio-pie">
                     <div class="card-title" style="width:100%">Tỷ trọng vốn</div>
                     <div style="position:relative;width:200px;height:200px">
                         <canvas id="pie-chart"></canvas>
@@ -200,7 +241,7 @@
                             phiên
                         </label>
                         <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap">
-                            <input type="checkbox" id="chart-all" onchange="toggleChartAll(this.checked)"> Tất cả
+                            <input type="checkbox" id="chart-all" onchange="toggleChartAll(this.checked)"> Tất cả phiên
                         </label>
                         <span id="chart-range" style="font-size:11px;color:var(--text2)"></span>
                     </div>
@@ -208,11 +249,12 @@
                         <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap">
                             <input type="checkbox" id="show-labels" checked onchange="renderChart(loadData())"> Số liệu
                         </label>
-                        <select id="chart-unit" onchange="renderChart(loadData())" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+                        <select id="chart-unit" onchange="renderChart(loadData())" title="Đơn vị biểu đồ" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px">
                             <option value="vnd">VNĐ</option>
                             <option value="pct">%</option>
                         </select>
-                        <select id="chart-filter" onchange="renderChart(loadData())" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+                        <span style="font-size:12px;color:var(--text2);white-space:nowrap">Mã</span>
+                        <select id="chart-filter" title="Lọc theo mã cổ phiếu" onchange="renderChart(loadData())" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px">
                             <option value="all">Tất cả</option>
                         </select>
                     </div>
@@ -223,31 +265,33 @@
             </div>
 
             <div class="card">
+                <div class="card-title">Nhập giá phiên</div>
+                <div class="quick-entry">
+                    <div class="qe-head">
+                        <label for="add-date">Ngày</label>
+                        <input type="date" id="add-date">
+                        <span style="font-size:11px">Mã nào bỏ trống sẽ giữ nguyên giá cũ</span>
+                    </div>
+                    <div class="qe-list" id="qe-list"></div>
+                    <div class="qe-actions">
+                        <button class="btn btn-green" onclick="saveQuickPrices()">💾 Lưu giá</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                     <div class="card-title" style="margin:0">Lịch sử giá theo phiên</div>
                     <div style="display:flex;gap:6px;align-items:center">
                         <select id="hist-code" onchange="renderHistory(loadData())" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px"></select>
-                        <button class="btn btn-orange" onclick="editPriceFromSelect()" style="font-size:12px;padding:6px 10px">✏️ Sửa</button>
-                        <button class="btn btn-red" onclick="deleteLastPrice()" style="font-size:12px;padding:6px 10px">🗑️ Xóa</button>
+                        <button class="btn btn-orange" onclick="editPriceFromSelect()" title="Sửa giá phiên mới nhất" style="font-size:12px;padding:6px 10px">✏️ Sửa</button>
+                        <button class="btn btn-red" onclick="deleteLastPrice()" title="Xóa phiên mới nhất" style="font-size:12px;padding:6px 10px">🗑️ Xóa</button>
                     </div>
                 </div>
                 <div class="hist-header">
                     <span>Ngày</span><span>Giá đóng cửa</span><span>Thay đổi</span><span>Lãi/Lỗ</span><span>%</span>
                 </div>
                 <div id="hist-table"></div>
-                <div class="form-row" style="margin-top:12px">
-                    <div class="form-group">
-                        <label>Ngày</label>
-                        <input type="date" id="add-date">
-                    </div>
-                    <div class="form-group">
-                        <label>Giá (nghìn VND)</label>
-                        <input type="number" step="0.001" id="add-price" placeholder="VD: 12.500">
-                    </div>
-                    <div class="form-group" style="justify-content:end">
-                        <button class="btn btn-green" onclick="addPrice()">➕ Thêm</button>
-                    </div>
-                </div>
             </div>
 
             <div class="card">
@@ -339,7 +383,9 @@
         </div>
     </div>
 
-    <script src="app.js?v=13"></script>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script src="app.js?v=14"></script>
     <script>
         function switchTab(name) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));

@@ -135,6 +135,31 @@ function fmtVND(v, sign = false) {
     return s;
 }
 
+// Số tiền rút gọn cho thẻ tổng quan / trục biểu đồ: 44,76 tr · 1,2 tỷ · 800 N
+function fmtShort(v, digits) {
+    const d = digits === undefined ? 2 : digits;
+    const a = Math.abs(v);
+    if (a >= 1e9) return (v / 1e9).toLocaleString('vi-VN', { maximumFractionDigits: d }) + ' tỷ';
+    if (a >= 1e6) return (v / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: d }) + ' tr';
+    if (a >= 1e3) return (v / 1e3).toLocaleString('vi-VN', { maximumFractionDigits: d }) + ' N';
+    return fmtVND(v);
+}
+
+// Phần trăm dùng dấu phẩy thập phân kiểu Việt Nam
+function fmtPct(v, digits = 2) {
+    return v.toFixed(digits).replace('.', ',');
+}
+
+function toast(msg, isErr) {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.toggle('err', !!isErr);
+    el.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
 function normalizeNghin(val) {
     return val > 100 ? val / 1000 : val;
 }
@@ -169,7 +194,7 @@ const chartLabelsPlugin = {
                 if (step > 1 && (n - 1 - index) % step !== 0) return;
                 const value = dataset.data[index];
                 if (value === null || value === undefined) return;
-                const text = isPct ? value.toFixed(2) + '%' : fmtVND(value, true);
+                const text = isPct ? fmtPct(value) + '%' : fmtVND(value, true);
                 const yPos = yScale.getPixelForValue(value);
                 ctx.save();
                 ctx.font = 'bold ' + fontSize + 'px -apple-system, sans-serif';
@@ -197,10 +222,31 @@ function renderAll() {
     const data = loadData();
     renderSummary(data);
     renderStockList(data);
+    renderQuickEntry(data);
     renderHistory(data);
     renderChart(data);
     renderPieChart(data);
     renderCapitalChart(data);
+}
+
+// Thẻ tổng quan: hiện số rút gọn, chạm vào để xem số đầy đủ
+function setMoneyMetric(id, value, signed) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const sign = signed && value > 0 ? '+' : '';
+    el.dataset.full = fmtVND(value, signed) + ' ₫';
+    el.dataset.compact = sign + fmtShort(value) + ' ₫';
+    el.dataset.expanded = '0';
+    el.textContent = el.dataset.compact;
+}
+
+function toggleMetric(card) {
+    const el = card.querySelector('.metric-value');
+    if (!el || !el.dataset.full) return;
+    const expanded = el.dataset.expanded === '1';
+    el.dataset.expanded = expanded ? '0' : '1';
+    el.textContent = expanded ? el.dataset.compact : el.dataset.full;
+    card.title = expanded ? 'Chạm để xem số đầy đủ' : 'Chạm để thu gọn';
 }
 
 function renderSummary(data) {
@@ -212,14 +258,22 @@ function renderSummary(data) {
     });
     const profit = totalValue - totalInvest;
     const pct = totalInvest ? (profit / totalInvest * 100) : 0;
-    const color = profit >= 0 ? 'var(--profit)' : 'var(--loss)';
+    const pos = profit >= 0;
 
-    document.getElementById('sum-invest').textContent = fmtVND(totalInvest * 1000);
-    document.getElementById('sum-value').textContent = fmtVND(totalValue * 1000);
-    document.getElementById('sum-profit').textContent = fmtVND(profit * 1000, true);
-    document.getElementById('sum-profit').style.color = color;
-    document.getElementById('sum-pct').textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-    document.getElementById('sum-pct').style.color = color;
+    setMoneyMetric('sum-invest', totalInvest * 1000, false);
+    setMoneyMetric('sum-value', totalValue * 1000, false);
+    setMoneyMetric('sum-profit', profit * 1000, true);
+
+    const pctEl = document.getElementById('sum-pct');
+    pctEl.textContent = (pos ? '▲ +' : '▼ ') + fmtPct(pct) + '%';
+    pctEl.style.color = pos ? 'var(--profit)' : 'var(--loss)';
+
+    ['metric-profit', 'metric-pct'].forEach(id => {
+        const card = document.getElementById(id);
+        if (!card) return;
+        card.classList.toggle('pos', pos);
+        card.classList.toggle('neg', !pos);
+    });
 }
 
 function renderStockList(data) {
@@ -233,13 +287,15 @@ function renderStockList(data) {
         const pnl = latest ? (latest - stk.buy_price) * stk.qty : 0;
         const pct = latest ? ((latest - stk.buy_price) / stk.buy_price * 100) : 0;
         const cls = latest ? (pnl >= 0 ? 'profit' : 'loss') : '';
+        const sub = `${stk.qty.toLocaleString('vi-VN')} × ${fmt(stk.buy_price)} → ${latest ? fmt(latest) : '--'}`;
         return `<div class="stock-row">
             <div class="stock-code">${stk.code}</div>
+            <div class="stock-sub">${sub}</div>
             <div class="stock-qty" onclick="editStockField('${stk.code}','qty',this)" style="cursor:pointer" title="Click để sửa">${stk.qty.toLocaleString('vi-VN')}</div>
             <div class="stock-buy" onclick="editStockField('${stk.code}','buy_price',this)" style="cursor:pointer" title="Click để sửa">${fmt(stk.buy_price)}</div>
             <div class="stock-price">${latest ? fmt(latest) : '--'}</div>
             <div class="stock-pnl ${cls}">${latest ? fmtVND(pnl * 1000, true) : '--'}</div>
-            <div class="stock-pct ${cls}">${latest ? (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%' : '--'}</div>
+            <div class="stock-pct ${cls}">${latest ? (pct >= 0 ? '+' : '') + fmtPct(pct) + '%' : '--'}</div>
             <button class="btn-icon btn-del" onclick="deleteStock('${stk.code}')">Xóa</button>
         </div>`;
     }).join('');
@@ -252,6 +308,67 @@ function renderStockList(data) {
     avgSel.innerHTML = data.stocks.map(s => `<option value="${s.code}">${s.code}</option>`).join('');
     avgSel.onchange = () => { _avgNewQty = 0; _avgNewPrice = 0; renderAvgPrice(); };
     renderAvgPrice();
+}
+
+// Nhập giá cho tất cả mã trong cùng một phiên
+function renderQuickEntry(data) {
+    const list = document.getElementById('qe-list');
+    if (!list) return;
+    // giữ lại giá trị đang gõ nếu bảng được vẽ lại
+    const typed = {};
+    list.querySelectorAll('.qe-input').forEach(inp => { typed[inp.dataset.code] = inp.value; });
+    if (!data.stocks.length) {
+        list.innerHTML = '<div class="empty" style="padding:8px">Chưa có mã CP nào</div>';
+        return;
+    }
+    list.innerHTML = data.stocks.map(stk => {
+        const latest = getLatestPrice(data, stk.code);
+        const ph = latest ? fmt(latest) : '—';
+        const val = typed[stk.code] ? ` value="${typed[stk.code]}"` : '';
+        return `<label class="qe-item" title="Giá gần nhất: ${latest ? fmt(latest) : 'chưa có'}">
+            <span class="qe-code">${stk.code}</span>
+            <input class="qe-input" type="number" step="0.001" inputmode="decimal"
+                   data-code="${stk.code}" placeholder="${ph}"${val}>
+        </label>`;
+    }).join('');
+}
+
+function sortHistory(hist) {
+    hist.sort((a, b) => {
+        const [da, ma, ya] = a.date.split('/').map(Number);
+        const [db, mb, yb] = b.date.split('/').map(Number);
+        return new Date(ya, ma - 1, da) - new Date(yb, mb - 1, db);
+    });
+}
+
+function saveQuickPrices() {
+    const dateInput = document.getElementById('add-date');
+    if (!dateInput || !dateInput.value) { toast('Chọn ngày trước', true); return; }
+    const [y, m, d] = dateInput.value.split('-');
+    const dateStr = `${d}/${m}/${y}`;
+    const data = loadData();
+    let saved = 0, invalid = 0;
+
+    document.querySelectorAll('.qe-input').forEach(inp => {
+        const raw = inp.value.trim().replace(',', '.');
+        if (!raw) return;
+        const value = parseFloat(raw);
+        if (isNaN(value) || value <= 0) { invalid++; return; }
+        const price = normalizeNghin(value);
+        const code = inp.dataset.code;
+        if (!data.history[code]) data.history[code] = [];
+        const existing = data.history[code].find(h => h.date === dateStr);
+        if (existing) existing.price = price;
+        else data.history[code].push({ date: dateStr, price });
+        sortHistory(data.history[code]);
+        saved++;
+    });
+
+    if (!saved) { toast(invalid ? 'Giá nhập chưa hợp lệ' : 'Chưa nhập giá mã nào', true); return; }
+    document.querySelectorAll('.qe-input').forEach(inp => { inp.value = ''; });
+    saveData(data);
+    renderAll();
+    toast('Đã lưu ' + saved + ' mã cho phiên ' + dateStr);
 }
 
 function renderHistory(data) {
@@ -278,7 +395,7 @@ function renderHistory(data) {
             <span class="h-price">${fmt(h.price)}</span>
             <span class="h-change ${change >= 0 ? 'profit' : 'loss'}">${fmtVND(change * 1000, true)}</span>
             <span class="h-pnl ${cls}">${fmtVND(pnl * 1000, true)}</span>
-            <span class="h-pct ${cls}">${(pct >= 0 ? '+' : '') + pct.toFixed(2)}%</span>
+            <span class="h-pct ${cls}">${(pct >= 0 ? '+' : '') + fmtPct(pct)}%</span>
         </div>`;
     });
     table.innerHTML = rows.join('');
@@ -375,7 +492,7 @@ const capitalLabelsPlugin = {
             meta.data.forEach((bar, index) => {
                 const value = dataset.data[index];
                 if (value === null || value === undefined) return;
-                const text = fmtVND(value * 1000, true);
+                const text = (value > 0 ? '+' : '') + fmtShort(value * 1000, 2);
                 const yPos = yScale.getPixelForValue(value);
                 ctx.save();
                 ctx.font = 'bold 9px -apple-system, sans-serif';
@@ -448,7 +565,7 @@ function renderCapitalChart(data) {
             },
             scales: {
                 y: {
-                    ticks: { callback: v => fmtVND(v * 1000, true), font: { size: 9 } },
+                    ticks: { callback: v => fmtShort(v * 1000, 1), font: { size: 9 } },
                     grid: { color: '#e0e0e0' }
                 },
                 x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } }
@@ -490,7 +607,7 @@ function renderPieChart(data) {
                 tooltip: {
                     callbacks: {
                         label: ctx => {
-                            const pct = ((ctx.raw / total) * 100).toFixed(1);
+                            const pct = fmtPct((ctx.raw / total) * 100, 1);
                             return ctx.label + ': ' + fmtVND(ctx.raw * 1000) + ' (' + pct + '%)';
                         }
                     }
@@ -504,7 +621,7 @@ function renderPieChart(data) {
     const legendEl = document.getElementById('pie-legend');
     if (legendEl) {
         legendEl.innerHTML = data.stocks.map((s, i) => {
-            const pct = ((values[i] / total) * 100).toFixed(1);
+            const pct = fmtPct((values[i] / total) * 100, 1);
             return `<span style="margin-right:10px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${bgColors[i]};margin-right:3px"></span>${s.code} ${pct}%</span>`;
         }).join('');
     }
@@ -661,7 +778,7 @@ function drawChartWindow() {
                 tooltip: {
                     callbacks: {
                         label: c => {
-                            if (isPct) return c.dataset.label + ': ' + c.raw.toFixed(2) + '%';
+                            if (isPct) return c.dataset.label + ': ' + fmtPct(c.raw) + '%';
                             return c.dataset.label + ': ' + fmtVND(c.raw, true) + ' VND';
                         }
                     }
@@ -673,7 +790,7 @@ function drawChartWindow() {
             scales: {
                 y: {
                     ticks: {
-                        callback: v => isPct ? v.toFixed(0) + '%' : fmtVND(v, true)
+                        callback: v => isPct ? v.toFixed(0) + '%' : fmtShort(v, 1)
                     },
                     grid: { color: '#e0e0e0' }
                 },
@@ -820,35 +937,6 @@ function editStockField(code, field, el) {
     };
     input.addEventListener('blur', confirm);
     input.addEventListener('keydown', e => { if (e.key === 'Enter') confirm(); if (e.key === 'Escape') renderAll(); });
-}
-
-function addPrice() {
-    const code = document.getElementById('hist-code').value;
-    if (!code) { alert('Chọn mã CP!'); return; }
-    const dateInput = document.getElementById('add-date').value;
-    const price = normalizeNghin(parseFloat(document.getElementById('add-price').value));
-    if (!dateInput || isNaN(price)) { alert('Nhập ngày và giá hợp lệ!'); return; }
-
-    const [y, m, d] = dateInput.split('-');
-    const dateStr = `${d}/${m}/${y}`;
-
-    const data = loadData();
-    if (!data.history[code]) data.history[code] = [];
-
-    const existing = data.history[code].find(h => h.date === dateStr);
-    if (existing) {
-        existing.price = price;
-    } else {
-        data.history[code].push({ date: dateStr, price });
-        data.history[code].sort((a, b) => {
-            const [da, ma, ya] = a.date.split('/').map(Number);
-            const [db, mb, yb] = b.date.split('/').map(Number);
-            return new Date(ya, ma - 1, da) - new Date(yb, mb - 1, db);
-        });
-    }
-    saveData(data);
-    document.getElementById('add-price').value = '';
-    renderAll();
 }
 
 function deleteLastPrice() {
